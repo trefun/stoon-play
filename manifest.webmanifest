@@ -1,0 +1,15 @@
+{
+  "name": "stoon",
+  "short_name": "stoon",
+  "description": "インク囲碁。CPU と陣地をぬり合う。",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1b1236",
+  "theme_color": "#1b1236",
+  "icons": [
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "apple-touch-icon.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

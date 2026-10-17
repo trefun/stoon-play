@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+  <title>stoon</title>
+  <!-- The title waits a moment for its fonts (game.js shows it; this is the fallback). Before
+       the stylesheets, so it runs at once. -->
+  <script>document.documentElement.classList.add('fonts-wait'); setTimeout(function () { document.documentElement.classList.remove('fonts-wait'); }, 3000);</script>
+  <meta name="description" content="インク囲碁。石を置いてインクをぬり広げ、CPU と陣地を取り合う。5路と7路、強さは 3 つ。">
+  <meta name="theme-color" content="#1b1236">
+  <meta name="color-scheme" content="dark">
+  <meta name="darkreader-lock">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
+
+  <!-- Share cards -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="stoon">
+  <meta property="og:description" content="インク囲碁。CPU と陣地をぬり合う。">
+  <meta property="og:url" content="https://trefun.github.io/stoon-play/">
+  <meta property="og:image" content="https://trefun.github.io/stoon-play/og.png">
+  <meta name="twitter:card" content="player">
+  <meta name="twitter:title" content="stoon">
+  <meta name="twitter:description" content="インク囲碁。CPU と陣地をぬり合う。">
+  <meta name="twitter:image" content="https://trefun.github.io/stoon-play/card.png">
+  <meta name="twitter:image:alt" content="stoon（インク囲碁）のロゴとインクのしぶき">
+  <meta name="twitter:player" content="https://trefun.github.io/stoon-play/">
+  <meta name="twitter:player:width" content="480">
+  <meta name="twitter:player:height" content="640">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bowlby+One&family=Dela+Gothic+One&family=M+PLUS+Rounded+1c:wght@800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <noscript><p style="padding:24px;text-align:center">stoon を遊ぶには JavaScript を有効にしてください。 / Please turn on JavaScript to play stoon.</p></noscript>
+  <div id="app">
+    <section id="title" class="screen">
+      <svg class="title-splats" id="title-splats" viewBox="0 0 400 700" preserveAspectRatio="xMidYMid slice" aria-hidden="true"></svg>
+      <div class="title-body">
+        <h1 class="logo" aria-label="stoon">
+          <svg class="logo-splat" viewBox="0 0 400 220" aria-hidden="true" id="logo-splat"></svg>
+          <span class="glyph g1" aria-hidden="true">s</span><span class="glyph g2" aria-hidden="true">t</span><span class="logo-stone me" aria-hidden="true"></span><span class="logo-stone cpu" aria-hidden="true"></span><span class="glyph g3" aria-hidden="true">n</span>
+        </h1>
+        <p class="tagline" data-i18n="tagline">インク囲碁</p>
+        <div class="levels" role="radiogroup" aria-label="CPU の強さ" data-i18n-aria="levelGroup">
+          <button type="button" role="radio" data-level="easy" data-i18n="easy">よわい</button>
+          <button type="button" role="radio" data-level="normal" data-i18n="normal">ふつう</button>
+          <button type="button" role="radio" data-level="strong" data-i18n="strong">つよい</button>
+        </div>
+        <p class="level-note" id="level-note"></p>
+        <p class="level-record" id="level-record"></p>
+        <button type="button" class="btn-big" id="start" data-i18n="start">あそぶ</button>
+        <button type="button" class="btn-text" id="howto-open" data-i18n="howto">あそびかた</button>
+      </div>
+    </section>
+
+    <section id="game" class="screen" hidden>
+      <svg class="result-splat" id="result-splat" viewBox="0 0 400 400" preserveAspectRatio="xMidYMid slice" aria-hidden="true"></svg>
+      <div class="result-head">
+        <p class="result-word" id="result-word"></p>
+        <p class="result-reason" id="result-reason"></p>
+      </div>
+      <header class="hud">
+        <button type="button" class="btn-icon" id="back" aria-label="タイトルにもどる" data-i18n-aria="back">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div class="meter" id="meter" aria-live="off">
+          <div class="meter-bar">
+            <div class="meter-fill me" id="meter-me"></div>
+            <div class="meter-fill komi me" id="meter-me-komi"></div>
+            <div class="meter-fill komi cpu" id="meter-cpu-komi"></div>
+            <div class="meter-fill cpu" id="meter-cpu"></div>
+          </div>
+          <div class="meter-nums">
+            <span class="num me"><i class="pip me"></i><b id="num-me">0</b><small id="komi-me" data-i18n="komiIncl" hidden>コミ込み</small></span>
+            <span class="level-chip" id="level-chip"></span>
+            <span class="num cpu"><small id="komi-cpu" data-i18n="komiIncl">コミ込み</small><b id="num-cpu">0</b><i class="pip cpu"></i></span>
+          </div>
+        </div>
+        <button type="button" class="btn-icon" id="mute" aria-label="音" data-i18n-aria="sound" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path class="wave" d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path class="cross" d="M16 9l6 6M22 9l-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+        </button>
+      </header>
+      <div class="status" id="status" aria-live="polite"></div>
+      <div class="trays">
+        <div class="tray me" id="tray-me"><span class="tray-label" data-i18n="prisoners">アゲハマ</span><span class="tray-stones" id="tray-me-stones"></span><b id="tray-me-n">0</b></div>
+        <div class="tray cpu" id="tray-cpu"><b id="tray-cpu-n">0</b><span class="tray-stones" id="tray-cpu-stones"></span><span class="tray-label" data-i18n="prisoners">アゲハマ</span></div>
+      </div>
+      <div class="board-wrap">
+        <div class="board-stack">
+        <svg id="board-ink" viewBox="0 0 800 800" aria-hidden="true"></svg>
+        <svg id="board" viewBox="0 0 800 800" role="img" aria-label="7路盤"></svg>
+        <div class="stamp" id="stamp" aria-hidden="true"></div>
+        </div>
+      </div>
+      <div class="result-foot">
+        <div class="tally" id="tally">
+          <div class="tally-bar">
+            <i id="tl-me" class="me"></i><i id="tl-me-age" class="age me"></i><i id="tl-me-komi" class="komi me"></i><i id="tl-cpu-komi" class="komi cpu"></i><i id="tl-cpu-age" class="age cpu"></i><i id="tl-cpu" class="cpu"></i>
+          </div>
+          <div class="tally-caption">
+            <span id="tc-me"></span><span id="tc-me-age"></span><span id="tc-me-komi" class="k"></span><span id="tc-cpu-komi" class="k"></span><span id="tc-cpu-age"></span><span id="tc-cpu"></span>
+          </div>
+        </div>
+        <div class="result-bars" id="result-bars">
+          <div class="rbar me"><span data-i18n="you">あなた</span><small id="res-me-note"></small><b id="res-me"></b></div>
+          <div class="rbar cpu"><span data-i18n="cpu">CPU</span><small id="res-cpu-note"></small><b id="res-cpu"></b></div>
+        </div>
+        <div class="result-actions" id="result-actions">
+          <button type="button" class="btn-big" id="again" data-i18n="again">もう一回</button>
+          <button type="button" class="btn-mid ghost" id="share" data-i18n="share">X にポスト</button>
+          <button type="button" class="btn-mid ghost" id="to-title" data-i18n="toTitle">タイトル</button>
+        </div>
+        <button type="button" class="btn-text next-level" id="next-level" hidden></button>
+      </div>
+      <footer class="controls">
+        <button type="button" class="btn-mid" id="pass" data-i18n="pass">パス</button>
+        <button type="button" class="btn-mid ghost" id="resign" data-i18n="resign">まいった</button>
+        <p class="skip-hint" data-i18n="tapToSkip">盤をタップすると早送り</p>
+      </footer>
+    </section>
+
+    <div class="overlay sheet" id="howto" hidden>
+      <div class="sheet-card">
+        <h2 data-i18n="howto">あそびかた</h2>
+        <ol id="howto-list"></ol>
+        <button type="button" class="btn-mid" id="howto-close" data-i18n="close">とじる</button>
+      </div>
+    </div>
+
+    <div class="toast" id="toast" role="status"></div>
+  </div>
+
+  <script src="i18n.js"></script>
+  <script>StoonI18n.apply(document);</script>
+  <script src="engine.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
