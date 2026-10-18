@@ -739,6 +739,39 @@
       return status;
     }
 
+    // Groups living on a single room for eyes (two points or more, only their own color
+    // around it), read out: one the other side can take by moving first (a straight three
+    // whose vital point is still open, say) is dead at the count, as in the Japanese rules,
+    // where the side to defend should have played there. Returns {dead, unsettled}: Sets of
+    // stones; unsettled holds the groups that live only if their owner moves first (a
+    // fight still on the board). Remembered like sekiStatus.
+    const roomMemo = new Map();
+    function roomStatus(board) {
+      const key = board.c.join('');
+      const hit = roomMemo.get(key);
+      if (hit) return hit;
+      const dead = new Set(), unsettled = new Set();
+      const { seki } = sekiStatus(board);
+      readLeft = 2 * READ_NODES;
+      for (const g of groupsOf(board)) {
+        if (g.eyes.length !== 1 || seki.has(g.stones[0])) continue;
+        const room = g.eyes[0];
+        if (room.length < 2 || room.length > 5) continue; // six and up: ko shapes, leave them to the estimate
+        // The room must be this one chain's alone (no cutting points around it).
+        const mine = new Set(g.stones);
+        if (room.some((q) => DIRS.some((d) => board.c[q + d] === g.color && !mine.has(q + d)))) continue;
+        const area = readingArea(board, g.stones);
+        if (area.filter((q) => board.c[q] === EMPTY).length > READ_ROOM) continue;
+        if (capturable(board, g.stones[0], area, false) !== true) continue;
+        const into = capturable(board, g.stones[0], area, true) === true ? dead : unsettled;
+        for (const t of g.stones) into.add(t);
+      }
+      const status = { dead, unsettled };
+      roomMemo.set(key, status);
+      if (roomMemo.size > 32) roomMemo.delete(roomMemo.keys().next().value);
+      return status;
+    }
+
     // Stones of groups in seki.
     function sekiStones(board) {
       return sekiStatus(board).seki;
@@ -751,7 +784,7 @@
       const c = board.c;
       const lean = groupLean(board, own);
       const { seki, dead, unsettled } = sekiStatus(board);
-      if (unsettled.size) return false;
+      if (unsettled.size || roomStatus(board).unsettled.size) return false;
       const alive = (p) => !dead.has(p) && (seki.has(p) || lean[p] >= -DEAD_LEAN);
       // Every group is clearly alive or clearly dead.
       for (const p of POINTS) {
@@ -827,14 +860,17 @@
 
     // Stones counted dead at the end: groups the ownership estimate gives to the other
     // side, except groups in seki and groups with two eyes, and groups that reading shows
-    // the other side can take by force (see sekiStatus). Sorted.
+    // the other side can take by force (see sekiStatus) or by moving first on its single
+    // room for eyes (see roomStatus). Sorted.
     function deadStones(board, own) {
       const { seki, dead: taken } = sekiStatus(board);
+      const rooms = roomStatus(board);
       const lean = groupLean(board, own);
       const dead = [];
       for (const g of groupsOf(board)) {
         const p = g.stones[0];
-        if (!taken.has(p) && (lean[p] >= -DEAD_LEAN || seki.has(p) || g.eyes.length >= 2)) continue;
+        const killed = taken.has(p) || rooms.dead.has(p) || rooms.unsettled.has(p);
+        if (!killed && (lean[p] >= -DEAD_LEAN || seki.has(p) || g.eyes.length >= 2)) continue;
         dead.push(...g.stones);
       }
       return dead.sort((a, b) => a - b);
@@ -952,7 +988,9 @@
       const best = ranked[0];
       const both = opts.other ? average(own, opts.other) : own;
       // Dame or open borders left (the stones the estimate calls dead set aside).
-      const open = hasOpenArea(board, deadStones(board, both));
+      // A room for eyes whose vital point is still open counts as open too: one side must
+      // play there (make the second eye or kill), not pass.
+      const open = hasOpenArea(board, deadStones(board, both)) || roomStatus(board).unsettled.size > 0;
       if (!open && board.passes > 0) {
         // The opponent passed and nothing is left to fill. With both sides' estimates,
         // pass back and let the count settle the stones, rather than throw stones into

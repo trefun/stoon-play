@@ -12,9 +12,10 @@
   let S, N, POINTS, idx, xOf, yOf, KOMI;
   const MOVE_LIMIT = 120;
   const LEVELS = {
-    easy: { size: 5, iters: 1500, temperature: 0.7, shy: true, resign: false, handicapKomi: 0.5, offCenter: true },
+    // help: the undo and hint buttons.
+    easy: { size: 5, iters: 1500, temperature: 0.7, shy: true, resign: false, handicapKomi: 0.5, offCenter: true, help: true },
     // handicapKomi: komi the CPU gets when it plays second (a little help for you).
-    normal: { size: 7, iters: 2500, temperature: 0.3, floor: 0.5, resign: true, handicapKomi: 4.5 },
+    normal: { size: 7, iters: 2500, temperature: 0.3, floor: 0.5, resign: true, handicapKomi: 4.5, help: true },
     strong: { size: 7, iters: 14000, temperature: 0, resign: true },
   };
   const ANALYSIS_ITERS = 2500;
@@ -323,42 +324,74 @@
       o.stop(t + dur + 0.02);
     },
 
-    // Match start: two ready beeps, then a rising "go" with a splash.
+    // A bubbly "pop": a sine that jumps up in pitch and dies fast, with a soft overtone.
+    pop(freq, start = 0, vol = 0.22) {
+      const c = this.ctx, t = c.currentTime + 0.01 + start;
+      for (const [k, v, type] of [[1, 1, 'sine'], [2, 0.25, 'triangle']]) {
+        const o = c.createOscillator();
+        o.type = type;
+        o.frequency.setValueAtTime(freq * k * 0.55, t);
+        o.frequency.exponentialRampToValueAtTime(freq * k, t + 0.035);
+        const g = c.createGain();
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(vol * v, t + 0.006);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+        o.connect(g).connect(c.destination);
+        o.start(t);
+        o.stop(t + 0.18);
+      }
+    },
+    // A round bell note (sine partials, a quick strike and a long fade).
+    bell(freq, start, dur, vol = 0.12) {
+      const c = this.ctx, t = c.currentTime + 0.01 + start;
+      for (const [k, v] of [[1, 1], [2, 0.3], [3, 0.1]]) {
+        const o = c.createOscillator();
+        o.type = 'sine';
+        o.frequency.value = freq * k;
+        const g = c.createGain();
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(vol * v, t + 0.008);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dur / k);
+        o.connect(g).connect(c.destination);
+        o.start(t);
+        o.stop(t + dur + 0.02);
+      }
+    },
+
+    // Match start: three pops up the chord and a bright "pon!" with a splash.
     start() {
       if (this.muted || !this.ctx) return;
-      this.tone(784, 0, 0.09, 'square', 0.12);
-      this.tone(784, 0.2, 0.09, 'square', 0.12);
-      this.tone(1046, 0.42, 0.4, 'sawtooth', 0.12, { bend: 1568, cutoff: [1800, 6000] });
-      this.tone(1318, 0.42, 0.4, 'square', 0.07, { bend: 1976 });
-      setTimeout(() => this.splat(1.15, 0.9), 430);
-      setTimeout(() => this.splat(0.9, 0.7), 520);
+      [523, 659, 784].forEach((f, i) => this.pop(f, i * 0.1, 0.24));
+      this.pop(1046, 0.32, 0.28);
+      [1046, 1318, 1568].forEach((f) => this.bell(f, 0.32, 0.6, 0.07));
+      setTimeout(() => this.splat(1.25, 0.55), 340);
     },
 
-    // Game over: a referee-style warble.
+    // Game over: a short cheerful whistle.
     whistle() {
       if (this.muted || !this.ctx) return;
-      this.tone(2300, 0, 0.18, 'sine', 0.16, { vib: [32, 140] });
-      this.tone(2300, 0.24, 0.42, 'sine', 0.16, { vib: [32, 140] });
+      this.tone(1760, 0, 0.12, 'sine', 0.12, { bend: 2350 });
+      this.tone(2350, 0.16, 0.3, 'sine', 0.12, { vib: [18, 60] });
     },
 
-    // Win: bouncy arpeggio up into a held chord, with splashes.
+    // Win: popping arpeggio up into a bell chord, with splashes.
     win() {
       if (this.muted || !this.ctx) return;
-      const seq = [523, 659, 784, 1046, 784, 1046];
-      seq.forEach((f, i) => this.tone(f, i * 0.09, 0.1, 'square', 0.11, { cutoff: 5000 }));
-      const end = seq.length * 0.09;
-      [1046, 1318, 1568].forEach((f) => this.tone(f, end, 0.7, 'sawtooth', 0.06, { vib: [6, 8], cutoff: [3000, 1600] }));
-      this.tone(262, end, 0.7, 'triangle', 0.18);
-      setTimeout(() => this.splat(1.2, 0.8), end * 1000);
-      setTimeout(() => this.splat(1.0, 0.6), end * 1000 + 120);
+      const seq = [523, 659, 784, 1046, 1318];
+      seq.forEach((f, i) => this.pop(f, i * 0.08, 0.24));
+      const end = seq.length * 0.08 + 0.04;
+      [1046, 1318, 1568, 2093].forEach((f) => this.bell(f, end, 1.1, 0.07));
+      this.tone(262, end, 0.5, 'triangle', 0.14);
+      setTimeout(() => this.splat(1.2, 0.7), end * 1000);
+      setTimeout(() => this.splat(1.0, 0.5), end * 1000 + 120);
     },
 
-    // Lose: a sagging three-step fall and a "wah-wah".
+    // Lose: two soft "boing"s down and a sliding whistle that droops.
     lose() {
       if (this.muted || !this.ctx) return;
-      [392, 370, 349].forEach((f, i) => this.tone(f, i * 0.24, 0.22, 'triangle', 0.16, { bend: f * 0.97 }));
-      this.tone(330, 0.75, 0.32, 'sawtooth', 0.13, { bend: 300, cutoff: [1400, 250], q: 8 });
-      this.tone(300, 1.1, 0.6, 'sawtooth', 0.13, { bend: 220, cutoff: [1400, 180], q: 8, vib: [5, 6] });
+      this.tone(523, 0, 0.2, 'triangle', 0.16, { bend: 392 });
+      this.tone(440, 0.24, 0.2, 'triangle', 0.16, { bend: 330 });
+      this.tone(660, 0.55, 0.7, 'sine', 0.12, { bend: 260, vib: [7, 12] });
     },
 
     notes(freqs, step = 0.11, type = 'triangle') {
@@ -1103,6 +1136,8 @@
   let endReason = '';
   let gameGen = 0; // bumped by every new game and by leaving one: stale steps stop
   let yourOwn = null; // the finished estimate of your current turn
+  let yourSearch = null; // the analysis of your current turn (a promise), for the hint
+  let history = []; // the board at the start of each of your turns, for undo
 
   // pos (for checks): {rows: ['X.O..', ...], you: 'X' | 'O'} starts from that position
   // with you to move.
@@ -1114,6 +1149,7 @@
     if (pos && LEVELS[level].size !== pos.rows.length) level = pos.rows.length === 5 ? 'easy' : 'normal';
     useSize(LEVELS[level].size);
     board = new S.Board();
+    hintMark = null;
     buildBoard();
     inkForce = true;
     wake();
@@ -1138,6 +1174,8 @@
       syncStones(board, -1);
     }
     updateMeter(new Float32Array(S.SIZE));
+    history = [];
+    $('undo').hidden = $('hint').hidden = !LEVELS[level].help;
     toast(you === BLACK ? t('youFirst', { komi: KOMI }) : t('youSecond', { komi: KOMI }));
     sound.start();
     if (board.turn === you) playerTurn();
@@ -1152,7 +1190,11 @@
     setStatus(t(first ? 'tapToPlay' : 'yourTurn'), 'me');
     $('pass').disabled = false;
     $('resign').disabled = false;
-    analyze();
+    $('hint').disabled = false;
+    history.push({ board: board.clone(), prisoners: [prisoners[BLACK], prisoners[WHITE]] });
+    $('undo').disabled = history.length < 2;
+    yourSearch = analyze();
+    coachTurn();
   }
 
   // The meter, the ink and the faces follow the estimate with you to move only: the
@@ -1160,6 +1202,10 @@
   // swing them back and forth every move.
   async function analyze() {
     const s = await think(board, ANALYSIS_ITERS);
+    analyzed(s);
+    return s;
+  }
+  async function analyzed(s) {
     const own = s.ownership();
     yourOwn = own;
     setTarget(own);
@@ -1175,6 +1221,7 @@
     if (!board.isLegal(p)) { nope(p); toast(t('illegal')); return; }
     stopThinking();
     disarm();
+    clearHint();
     const captured = [];
     board.play(p, captured);
     capture(you, captured);
@@ -1189,6 +1236,7 @@
   function playerPass() {
     if (state !== 'player') return;
     stopThinking();
+    clearHint();
     board.play(PASS);
     toast(t('youPassed'));
     afterMove();
@@ -1204,6 +1252,7 @@
     state = 'cpu';
     setStatus(t('thinking'), 'cpu', true);
     $('pass').disabled = true;
+    $('undo').disabled = $('hint').disabled = true;
     const lv = LEVELS[level];
     const gen = thinkGen;
     const started = performance.now();
@@ -1233,6 +1282,7 @@
       // A pass is easy to miss: a short note in the middle of the board, in the CPU's ink.
       stamp(t('cpuPassed'), 'cpu-pass');
       sound.notes([523, 392], 0.12, 'triangle');
+      coachSoon('coachPass', 1400);
     } else {
       const before = yourAtari();
       const captured = [];
@@ -1246,6 +1296,69 @@
       if (!captured.length && [...yourAtari()].some((q) => !before.has(q))) setTimeout(() => sound.notes([392, 311], 0.09, 'triangle'), 260);
     }
     afterMove();
+  }
+
+  // Undo (待った): back to the start of your previous turn, the CPU's answer taken back too.
+  function undo() {
+    if (state !== 'player' || history.length < 2) return;
+    stopThinking();
+    disarm();
+    clearHint();
+    history.pop();
+    const snap = history.pop();
+    board = snap.board.clone();
+    prisoners[BLACK] = snap.prisoners[0];
+    prisoners[WHITE] = snap.prisoners[1];
+    trayShown.me = prisoners[you];
+    trayShown.cpu = prisoners[3 - you];
+    renderTray('me');
+    renderTray('cpu');
+    $('stamp').classList.remove('show');
+    syncStones(board, -1);
+    sound.notes([392, 523], 0.08, 'triangle');
+    toast(t('undone'), 1200);
+    playerTurn();
+  }
+
+  // Hint: a glowing ring on the move the analysis of your turn likes best.
+  let hintMark = null;
+  function clearHint() {
+    if (hintMark) hintMark.remove();
+    hintMark = null;
+  }
+  async function showHint(auto) {
+    if (state !== 'player' || !yourSearch) return;
+    const moves = board.moves, gen = gameGen;
+    if (auto !== true) $('hint').disabled = true; // one hint a turn
+    const s = await yourSearch;
+    if (gen !== gameGen || state !== 'player' || board.moves !== moves) return;
+    const d = S.decide(s, board, {});
+    if (d.type !== 'move' || d.move === PASS) { toast(t('hintPass'), 2400); return; }
+    clearHint();
+    const p = d.move;
+    hintMark = el('g', { class: 'hint-mark' }, fxLayer);
+    el('circle', { cx: px(p), cy: py(p), r: CELL * 0.36, fill: COLORS.me, 'fill-opacity': 0.35, stroke: COLORS.meLight, 'stroke-width': 7 }, hintMark);
+    sound.notes([659, 880], 0.08, 'sine');
+  }
+
+  // The first game on a device: a word at a few moments (each once per device).
+  function coachSoon(key, delay = 0) {
+    if (store.get('seen-' + key, '0') === '1') return;
+    const gen = gameGen;
+    setTimeout(() => {
+      if (gen !== gameGen || state === 'judging' || state === 'over') return;
+      store.set('seen-' + key, '1');
+      toast(t(key), 3600);
+    }, delay + ($('toast').classList.contains('show') ? 1600 : 0));
+  }
+  function coachTurn() {
+    const turns = history.length;
+    if (turns === 1 && LEVELS[level].help && store.get('seen-coachHint', '0') !== '1') {
+      // The very first turn: the hint shows itself once, and says where it lives.
+      coachSoon('coachHint', 1200);
+      if (!Object.keys(loadRecord()).length) setTimeout(() => { if (history.length === 1) showHint(true); }, 1400);
+    } else if (turns === 2) coachSoon('coachMeter', 600);
+    else if (turns === 4 && LEVELS[level].help) coachSoon('coachUndo', 600);
   }
 
   // Your stones whose group has a single liberty.
@@ -1300,6 +1413,7 @@
   }
 
   async function finish(reason) {
+    clearHint();
     endReason = reason;
     settleFast = false;
     stopThinking();
@@ -1757,7 +1871,33 @@
     else key = r.win ? 'shareWinResign' : 'shareLoseResign';
     const rec = loadRecord()[level];
     const streak = r.win && rec && rec.s >= 2 ? ' ' + t('streak', { n: rec.s }) : '';
-    return t(key, vars) + streak + ' #stoon';
+    const map = shareMap(r);
+    return t(key, vars) + streak + (map ? '\n' + map : '') + '\n#stoon';
+  }
+
+  // The final board as rows of colored squares (like Wordle's): each point in the ink of
+  // whoever holds it, ⬜ for nobody's.
+  const SQUARES = [[0, '🟥'], [28, '🟧'], [55, '🟨'], [105, '🟩'], [215, '🟦'], [275, '🟪'], [360, '🟥']];
+  function squareOf(hex) {
+    const [r, g, b] = hexRgb(hex).map((v) => v / 255);
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn || 1;
+    let h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    h = (h * 60 + 360) % 360;
+    let best = SQUARES[0];
+    for (const q of SQUARES) if (Math.abs(q[0] - h) < Math.abs(best[0] - h)) best = q;
+    return best[1];
+  }
+  function shareMap(r) {
+    if (!r.owner) return '';
+    let me = squareOf(COLORS.me), cpu = squareOf(COLORS.cpu);
+    if (me === cpu) { me = '🟦'; cpu = '🟧'; }
+    const rows = [];
+    for (let y = 0; y < N; y++) {
+      let row = '';
+      for (let x = 0; x < N; x++) { const o = r.owner[idx(x, y)]; row += o > 0 ? me : o < 0 ? cpu : '⬜'; }
+      rows.push(row);
+    }
+    return rows.join('\n');
   }
 
   // ---------- share ----------
@@ -1915,6 +2055,8 @@
     arm(e.currentTarget, t('passConfirm'), playerPass);
     if (first) toast(t('passWarn'), ARM_MS, true);
   });
+  $('undo').addEventListener('click', undo);
+  $('hint').addEventListener('click', showHint);
   $('resign').addEventListener('click', (e) => arm(e.currentTarget, t('resignConfirm'), () => { if (state === 'player' || state === 'cpu') finish('resign'); }));
   $('back').addEventListener('click', (e) => {
     if (state === 'over' || state === 'idle') { toTitle(); return; }
