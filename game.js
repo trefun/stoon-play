@@ -1843,10 +1843,13 @@
     const logoFont = '"Bowlby One", sans-serif';
     const headFont = cssVar('--font-head') || 'sans-serif';
     await fontsReady([`120px ${logoFont}`, `40px ${headFont}`]);
-    const W = 1200, H = 675;
+    // Drawn at twice the size, then cut down to the final board alone (the picture for the
+    // post: just the finished game).
+    const W = 1200, H = 675, SCALE = 2;
     const cv = document.createElement('canvas');
-    cv.width = W; cv.height = H;
+    cv.width = W * SCALE; cv.height = H * SCALE;
     const ctx = cv.getContext('2d');
+    ctx.scale(SCALE, SCALE);
 
     ctx.fillStyle = '#1b1236';
     ctx.fillRect(0, 0, W, H);
@@ -1912,6 +1915,14 @@
         ctx.beginPath(); ctx.moveTo(X(p) - s, Y(p) - s); ctx.lineTo(X(p) + s, Y(p) + s);
         ctx.moveTo(X(p) + s, Y(p) - s); ctx.lineTo(X(p) - s, Y(p) + s); ctx.stroke();
       }
+    }
+
+    {
+      const pad = 24, x0 = bx - pad, y0 = by - pad, size = B + 2 * pad;
+      const out = document.createElement('canvas');
+      out.width = out.height = size * SCALE;
+      out.getContext('2d').drawImage(cv, x0 * SCALE, y0 * SCALE, size * SCALE, size * SCALE, 0, 0, size * SCALE, size * SCALE);
+      return new Promise((res) => out.toBlob((bl) => res(bl), 'image/png'));
     }
 
     // Logo: "st" + two stones + "n"
