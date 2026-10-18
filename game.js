@@ -1666,9 +1666,6 @@
   function showResult(r) {
     state = 'over';
     lastResult = r;
-    shareBlob = null;
-    shareImage = new Promise((res) => setTimeout(res, 1600)).then(() => (lastResult === r ? renderShareImage(r) : null)).catch(() => null);
-    shareImage.then((b) => { if (lastResult === r) shareBlob = b; });
     const sp = $('result-splat');
     sp.textContent = '';
     const color = r.win ? COLORS.me : COLORS.cpu;
@@ -1763,319 +1760,20 @@
     return t(key, vars) + streak + ' #stoon';
   }
 
-  // ---------- share card ----------
-
-  let shareImage = null; // Promise<Blob|null> for the last result
-  let shareBlob = null;
+  // ---------- share ----------
 
   function cssVar(name) {
     return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   }
 
-  async function fontsReady(fonts) {
-    if (!document.fonts || !document.fonts.load) return;
-    const wait = Promise.all(fonts.map((f) => document.fonts.load(f).catch(() => null)));
-    await Promise.race([wait, new Promise((r) => setTimeout(r, 1500))]);
-  }
-
-  function roundRect(ctx, x, y, w, h, r) {
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.arcTo(x + w, y, x + w, y + h, r);
-    ctx.arcTo(x + w, y + h, x, y + h, r);
-    ctx.arcTo(x, y + h, x, y, r);
-    ctx.arcTo(x, y, x + w, y, r);
-    ctx.closePath();
-  }
-
-  function drawStone(ctx, x, y, r, side, alpha) {
-    const c = side === 'me'
-      ? [COLORS.meLight, COLORS.me, COLORS.meDeep]
-      : [COLORS.cpuLight, COLORS.cpu, COLORS.cpuDeep];
-    ctx.save();
-    ctx.globalAlpha = alpha;
-    ctx.fillStyle = 'rgba(18,11,40,0.45)';
-    ctx.beginPath(); ctx.arc(x, y + r * 0.16, r, 0, Math.PI * 2); ctx.fill();
-    const g = ctx.createRadialGradient(x - r * 0.3, y - r * 0.35, r * 0.05, x, y, r * 1.1);
-    g.addColorStop(0, c[0]); g.addColorStop(0.6, c[1]); g.addColorStop(1, c[2]);
-    ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
-    ctx.lineWidth = r * 0.12;
-    ctx.strokeStyle = '#120b28';
-    ctx.stroke();
-    ctx.fillStyle = 'rgba(255,255,255,0.85)';
-    ctx.beginPath(); ctx.ellipse(x - r * 0.3, y - r * 0.37, r * 0.25, r * 0.16, -0.6, 0, Math.PI * 2); ctx.fill();
-    ctx.restore();
-  }
-
-  function drawSmile(ctx, x, y, r, ink) {
-    ctx.save();
-    ctx.fillStyle = ink;
-    ctx.strokeStyle = ink;
-    ctx.lineWidth = r * 0.09;
-    ctx.lineCap = 'round';
-    ctx.fillStyle = 'rgba(255,143,179,0.6)';
-    for (const s of [-1, 1]) { ctx.beginPath(); ctx.ellipse(x + s * 0.46 * r, y + 0.12 * r, 0.13 * r, 0.075 * r, 0, 0, Math.PI * 2); ctx.fill(); }
-    for (const s of [-1, 1]) {
-      ctx.fillStyle = '#120b28';
-      ctx.beginPath(); ctx.ellipse(x + s * 0.3 * r, y - 0.06 * r, 0.085 * r, 0.12 * r, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#fff';
-      ctx.beginPath(); ctx.arc(x + (s * 0.3 - 0.03) * r, y - 0.11 * r, 0.035 * r, 0, Math.PI * 2); ctx.fill();
-    }
-    ctx.beginPath(); ctx.moveTo(x - 0.13 * r, y + 0.2 * r); ctx.quadraticCurveTo(x, y + 0.33 * r, x + 0.13 * r, y + 0.2 * r); ctx.stroke();
-    ctx.restore();
-  }
-
-  function outlinedText(ctx, text, x, y, stroke) {
-    ctx.lineJoin = 'round';
-    ctx.lineWidth = stroke;
-    ctx.strokeStyle = '#120b28';
-    ctx.fillStyle = '#120b28';
-    ctx.fillText(text, x + stroke * 0.4, y + stroke * 0.7);
-    ctx.strokeText(text, x + stroke * 0.4, y + stroke * 0.7);
-    ctx.strokeText(text, x, y);
-    ctx.fillStyle = '#fff';
-    ctx.fillText(text, x, y);
-  }
-
-  // 1200x675 image of the final board and the score.
-  async function renderShareImage(r) {
-    const logoFont = '"Bowlby One", sans-serif';
-    const headFont = cssVar('--font-head') || 'sans-serif';
-    await fontsReady([`120px ${logoFont}`, `40px ${headFont}`]);
-    const W = 1200, H = 675;
-    const cv = document.createElement('canvas');
-    cv.width = W; cv.height = H;
-    const ctx = cv.getContext('2d');
-
-    ctx.fillStyle = '#1b1236';
-    ctx.fillRect(0, 0, W, H);
-    ctx.save();
-    ctx.strokeStyle = 'rgba(255,255,255,0.03)';
-    ctx.lineWidth = 22;
-    for (let x = -H; x < W; x += 44) { ctx.beginPath(); ctx.moveTo(x, H); ctx.lineTo(x + H, 0); ctx.stroke(); }
-    ctx.restore();
-    const win = r.win;
-    ctx.fillStyle = win ? COLORS.me : COLORS.cpu;
-    ctx.fill(new Path2D(splatPath(930, 250, 190, 978)));
-    ctx.fillStyle = win ? COLORS.cpu : COLORS.me;
-    ctx.fill(new Path2D(splatPath(1160, 640, 110, 979)));
-
-    // Board
-    const B = 595, bx = 40, by = 40, m = N <= 5 ? 64 : 52, cell = (B - 2 * m) / (N - 1);
-    const X = (p) => bx + m + xOf(p) * cell, Y = (p) => by + m + yOf(p) * cell;
-    ctx.fillStyle = 'rgba(12,7,32,0.55)';
-    roundRect(ctx, bx, by + 8, B, B, 32); ctx.fill();
-    ctx.fillStyle = '#e9e5f0';
-    roundRect(ctx, bx, by, B, B, 32); ctx.fill();
-    ctx.save();
-    roundRect(ctx, bx, by, B, B, 32); ctx.clip();
-    const b = r.board;
-    const dead = new Set(r.dead);
-    const counted = r.me != null;
-    for (const p of POINTS) {
-      const o = r.owner[p];
-      if (!o) continue;
-      ctx.fillStyle = o > 0 ? COLORS.me : COLORS.cpu;
-      ctx.beginPath();
-      for (const [x, y, rr] of puddleCircles(p, r.owner)) {
-        const cx = bx + m + x * cell, cy = by + m + y * cell;
-        ctx.moveTo(cx + rr * cell, cy);
-        ctx.arc(cx, cy, rr * cell, 0, Math.PI * 2);
-      }
-      ctx.fill();
-    }
-    ctx.restore();
-    ctx.strokeStyle = 'rgba(42,31,77,0.38)';
-    ctx.lineWidth = 3;
-    ctx.lineCap = 'round';
-    for (let i = 0; i < N; i++) {
-      const v = m + i * cell;
-      ctx.beginPath(); ctx.moveTo(bx + m, by + v); ctx.lineTo(bx + B - m, by + v); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(bx + v, by + m); ctx.lineTo(bx + v, by + B - m); ctx.stroke();
-    }
-    for (const p of POINTS) {
-      const v = b.c[p];
-      if (v !== EMPTY && !dead.has(p)) {
-        drawStone(ctx, X(p), Y(p), cell * 0.43, v === r.you ? 'me' : 'cpu', 1);
-        drawSmile(ctx, X(p), Y(p), cell * 0.43, v === r.you ? COLORS.meOn : COLORS.cpuOn);
-      } else if (counted && r.owner[p] !== 0) {
-        ctx.fillStyle = r.owner[p] > 0 ? COLORS.meLight : COLORS.cpuLight;
-        ctx.strokeStyle = '#120b28';
-        ctx.lineWidth = 4;
-        ctx.beginPath(); ctx.arc(X(p), Y(p), cell * 0.26, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-      } else if (counted) {
-        const s = cell * 0.13;
-        ctx.strokeStyle = '#7d7891';
-        ctx.lineWidth = 6;
-        ctx.lineCap = 'round';
-        ctx.beginPath(); ctx.moveTo(X(p) - s, Y(p) - s); ctx.lineTo(X(p) + s, Y(p) + s);
-        ctx.moveTo(X(p) + s, Y(p) - s); ctx.lineTo(X(p) - s, Y(p) + s); ctx.stroke();
-      }
-    }
-
-    // Logo: "st" + two stones + "n"
-    ctx.textBaseline = 'alphabetic';
-    ctx.textAlign = 'left';
-    ctx.font = `92px ${logoFont}`;
-    const wSt = ctx.measureText('st').width, wN = ctx.measureText('n').width;
-    const sr = 30, gap = 4;
-    let lx = 930 - (wSt + wN + sr * 4 + gap * 3) / 2;
-    const ly = 150;
-    outlinedText(ctx, 'st', lx, ly, 14);
-    lx += wSt + gap;
-    drawStone(ctx, lx + sr, ly - 30, sr, 'me', 1);
-    lx += sr * 2 + gap;
-    drawStone(ctx, lx + sr, ly - 34, sr, 'cpu', 1);
-    lx += sr * 2 + gap;
-    outlinedText(ctx, 'n', lx, ly, 14);
-
-    // Result word
-    ctx.save();
-    ctx.translate(930, 262);
-    ctx.rotate(-0.08);
-    ctx.textAlign = 'center';
-    ctx.font = `${win ? 118 : 96}px ${logoFont}`;
-    outlinedText(ctx, win ? 'WIN!' : 'LOSE...', 0, 40, 16);
-    ctx.restore();
-
-    // Tally: board points and striped komi on one bar; the middle line decides.
-    let ry = 400;
-    if (r.me != null) {
-      const tx = 720, tw = 420, ty = 340, th = 30;
-      const segs = [
-        [r.meTerr, COLORS.me, ''], [r.meAge, COLORS.me, 'dots'], [r.meKomi, COLORS.me, 'stripes'],
-        [r.cpuKomi, COLORS.cpu, 'stripes'], [r.cpuAge, COLORS.cpu, 'dots'], [r.cpuTerr, COLORS.cpu, ''],
-      ];
-      const total = segs.reduce((a, s) => a + s[0], 0);
-      ctx.fillStyle = '#120b28';
-      roundRect(ctx, tx - 6, ty - 6, tw + 12, th + 12, (th + 12) / 2); ctx.fill();
-      const captions = [];
-      ctx.save();
-      roundRect(ctx, tx, ty, tw, th, th / 2); ctx.clip();
-      let sx = tx;
-      for (const [v, col, pattern] of segs) {
-        const w = (v / total) * tw;
-        if (w <= 0) continue;
-        ctx.fillStyle = col;
-        ctx.fillRect(sx, ty, w + 0.5, th);
-        if (pattern === 'dots') {
-          ctx.save();
-          ctx.beginPath(); ctx.rect(sx, ty, w, th); ctx.clip();
-          ctx.fillStyle = 'rgba(255,255,255,0.6)';
-          for (let dx = 6; dx < w + 6; dx += 12) {
-            for (const dy of [8, 22]) { ctx.beginPath(); ctx.arc(sx + dx + (dy === 22 ? 6 : 0), ty + dy, 3.2, 0, Math.PI * 2); ctx.fill(); }
-          }
-          ctx.restore();
-        }
-        if (pattern === 'stripes') {
-          ctx.save();
-          ctx.beginPath(); ctx.rect(sx, ty, w, th); ctx.clip();
-          ctx.strokeStyle = 'rgba(255,255,255,0.55)';
-          ctx.lineWidth = 6;
-          for (let k = -th; k < w + th; k += 14) { ctx.beginPath(); ctx.moveTo(sx + k, ty + th); ctx.lineTo(sx + k + th, ty); ctx.stroke(); }
-          ctx.restore();
-          captions.push([`${t('komi')} ${v}`, sx + w / 2]);
-        }
-        sx += w;
-      }
-      ctx.restore();
-      ctx.fillStyle = '#fff';
-      ctx.fillRect(tx + tw / 2 - 2.5, ty - 8, 5, th + 16);
-      ctx.font = `20px ${headFont}`;
-      ctx.textAlign = 'center';
-      for (const [text, cx] of captions) {
-        const w = ctx.measureText(text).width + 20;
-        ctx.fillStyle = '#120b28';
-        roundRect(ctx, cx - w / 2, ty + th + 8, w, 30, 8); ctx.fill();
-        ctx.fillStyle = '#fff';
-        ctx.fillText(text, cx, ty + th + 30);
-      }
-      ry = 418;
-    }
-    // Score rows, or the reason for a resignation
-    if (r.me != null) {
-      for (const [side, label, value, color, sub] of [
-        ['me', t('you'), r.me, COLORS.meText, breakdown(r.meTerr, r.meAge, r.meKomi)],
-        ['cpu', t('cpu'), r.cpu, COLORS.cpuText, breakdown(r.cpuTerr, r.cpuAge, r.cpuKomi)],
-      ]) {
-        ctx.fillStyle = '#120b28';
-        roundRect(ctx, 720, ry, 420, 74, 18); ctx.fill();
-        ctx.fillStyle = side === 'me' ? COLORS.me : COLORS.cpu;
-        ctx.beginPath(); ctx.arc(752, ry + 37, 11, 0, Math.PI * 2); ctx.fill();
-        ctx.textAlign = 'left';
-        ctx.fillStyle = '#fff';
-        ctx.font = `30px ${headFont}`;
-        ctx.fillText(label, 776, sub ? ry + 36 : ry + 48);
-        ctx.textAlign = 'right';
-        ctx.fillStyle = color;
-        ctx.font = `46px ${headFont}`;
-        ctx.fillText(String(value), 1116, ry + 55);
-        if (sub) {
-          // The breakdown keeps clear of the total: smaller type when it runs long.
-          const room = 1116 - ctx.measureText(String(value)).width - 18 - 776;
-          ctx.textAlign = 'left';
-          let size = 19;
-          ctx.font = `${size}px ${headFont}`;
-          while (size > 13 && ctx.measureText(sub).width > room) ctx.font = `${--size}px ${headFont}`;
-          ctx.fillStyle = '#b9b0d6';
-          ctx.fillText(sub, 776, ry + 62, room); // still too long: squeezed to fit
-        }
-        ry += 88;
-      }
-    } else if (r.reason) {
-      ctx.font = `34px ${headFont}`;
-      const w = ctx.measureText(r.reason).width + 48;
-      ctx.fillStyle = '#120b28';
-      roundRect(ctx, 930 - w / 2, 420, w, 64, 12); ctx.fill();
-      ctx.fillStyle = '#fff';
-      ctx.textAlign = 'center';
-      ctx.fillText(r.reason, 930, 464);
-      ry = 520;
-    }
-    ctx.fillStyle = '#b9b0d6';
-    ctx.font = `26px ${headFont}`;
-    ctx.textAlign = 'center';
-    const rec = loadRecord()[level];
-    const streak = r.win && rec && rec.s >= 2 ? ' · ' + t('streak', { n: rec.s }) : '';
-    ctx.fillText(t('cardLevel', { lv: t(level) }) + streak, 930, Math.min(ry + 36, 650));
-
-    return new Promise((res) => cv.toBlob((bl) => res(bl), 'image/png'));
-  }
-
-  function download(blob) {
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'stoon.png';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-  }
-
-  // Phones: share sheet with the image (pick X there). Elsewhere: copy the image,
-  // open X's composer with the text, and let the player paste it.
   // Text and link only: X's composer opens with them (the link's card shows the game).
   function share() {
     // The link opens the game at the level just played.
     const url = location.origin + location.pathname + '?level=' + level;
-    openIntent(shareText(), url, null);
+    openIntent(shareText(), url);
   }
 
-  function openIntent(text, url, blob) {
-    // Inside a frame (the X card), copying and saving are blocked: the post carries the
-    // link, and its card shows the picture.
-    let framed = true;
-    try { framed = window.top !== window.self; } catch (e) { /* cross-origin: framed */ }
-    if (blob && !framed) {
-      let copying = null;
-      try {
-        if (navigator.clipboard && window.ClipboardItem) copying = navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-      } catch (e) { copying = null; }
-      (copying || Promise.reject(new Error('no clipboard')))
-        .then(() => toast(t('copied')))
-        .catch(() => { download(blob); toast(t('saved')); });
-    }
+  function openIntent(text, url) {
     const intent = 'https://x.com/intent/post?text=' + encodeURIComponent(text) + '&url=' + encodeURIComponent(url);
     window.open(intent, '_blank', 'noopener');
   }
@@ -2421,7 +2119,6 @@
     pass: playerPass,
     finish: (reason) => finish(reason || 'settled'),
     sound,
-    get shareImage() { return shareImage; },
     get lastResult() { return lastResult; },
   };
 })();
