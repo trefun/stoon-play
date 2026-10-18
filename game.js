@@ -687,6 +687,8 @@
 
   // Sync stone elements with the board. Newly placed stones drop in; removed ones pop.
   function syncStones(board, placed) {
+    inkForce = true; // the ink kept under stones follows the stones
+    wake();
     for (const [p, s] of stoneEls) {
       if (board.c[p] !== s.color) {
         s.g.classList.remove('drop');
@@ -752,8 +754,14 @@
     // the gaps (the small splash circles are hidden then).
     const grow = inkQuality === 0 ? 1.28 : 1;
     for (const p of POINTS) {
-      const a = Math.round(inkAmount(shown[p]) * 64) / 64;
-      const b = Math.round(inkAmount(-shown[p]) * 64) / 64;
+      let a = Math.round(inkAmount(shown[p]) * 64) / 64;
+      let b = Math.round(inkAmount(-shown[p]) * 64) / 64;
+      // Every stone keeps a little of its own ink around it, even one the estimate already
+      // gives up (a ring just wider than the stone; the other ink steps back there).
+      const c = board ? board.c[p] : EMPTY;
+      if (c === BLACK || c === WHITE) {
+        if (c === you) { a = Math.max(a, STONE_INK); b = 0; } else { b = Math.max(b, STONE_INK); a = 0; }
+      }
       if (a === inkDrawn.me[p] && b === inkDrawn.cpu[p]) continue;
       inkDrawn.me[p] = a;
       inkDrawn.cpu[p] = b;
@@ -767,6 +775,7 @@
     return moving;
   }
   const inkDrawn = { me: [], cpu: [] }; // ink amounts last written, per point
+  const STONE_INK = 0.66; // ink size kept under every stone (0.58 is the stone's own size)
   let inkForce = false;
   let inkDry = false; // counting: the ink layer is hidden and no longer redrawn
 
@@ -1374,6 +1383,26 @@
         }
         sound.notes([330, 277], 0.14, 'sine');
         await T(800);
+        // A dead chain holding room for an eye (two points or more): the vital point of that
+        // room, labelled, with the other side's stone on it, so it shows why the room still
+        // makes only one eye.
+        const pale = new Map();
+        const vitals = [];
+        for (const ch of chains) {
+          for (const room of roomsOf(ch.stones)) {
+            if (room.length < 2) continue;
+            const v = centerOf(room);
+            if (board.c[v] === EMPTY && !pale.has(v)) pale.set(v, makePale(v, 3 - ch.color));
+            vitals.push(markSeki(v, t('vital')));
+          }
+        }
+        if (vitals.length) {
+          setStatus(t('nakade'), '', false);
+          sound.notes([392, 330], 0.12, 'triangle');
+          await T(2200);
+          for (const g of vitals) g.remove();
+          setStatus(t('deadEyes'), '', false);
+        }
         // All chains at once, one pale stone each per beat, every chain taken as its last
         // liberty fills: a couple of seconds however many there are.
         const take = (ch) => {
@@ -1398,7 +1427,6 @@
         };
         const longest = Math.max(...chains.map((ch) => ch.libs.length));
         const step = Math.max(70, Math.min(180, 1500 / longest));
-        const pale = new Map();
         for (let i = 0; i < longest; i++) {
           for (const ch of chains) {
             if (i >= ch.libs.length) continue;
@@ -1572,12 +1600,42 @@
     return out;
   }
 
-  function markSeki(p) {
+  function markSeki(p, label = t('seki')) {
     const g = el('g', { class: 'seki-mark' }, stoneLayer);
     const w = CELL * 0.84, h = CELL * 0.42;
     el('rect', { x: px(p) - w / 2, y: py(p) - h / 2, width: w, height: h, rx: h / 2, fill: '#120b28', stroke: '#fff', 'stroke-width': 4 }, g);
     const text = el('text', { x: px(p), y: py(p), 'text-anchor': 'middle', 'dominant-baseline': 'central', fill: '#fff', 'font-size': CELL * 0.25, 'font-family': cssVar('--font-head') || 'sans-serif' }, g);
-    text.textContent = t('seki');
+    text.textContent = label;
+    return g;
+  }
+
+  // The room a dead chain holds: points (empty, or stones the other side threw in) that
+  // it closes off from the rest of the board. [[points]] per room, small rooms only.
+  function roomsOf(stones) {
+    const own = new Set(stones);
+    const color = board.c[stones[0]];
+    const seen = new Set();
+    const rooms = [];
+    for (const q of stones) for (const d of [1, -1, S.W, -S.W]) {
+      const start = q + d;
+      if (own.has(start) || seen.has(start) || !POINTS.includes(start) || board.c[start] === color) continue;
+      const room = [], stack = [start];
+      seen.add(start);
+      let open = false;
+      while (stack.length) {
+        const r = stack.pop();
+        room.push(r);
+        for (const e of [1, -1, S.W, -S.W]) {
+          const u = r + e;
+          if (seen.has(u) || !POINTS.includes(u) || own.has(u)) continue;
+          if (board.c[u] === color) { open = true; continue; } // another chain of its colour
+          seen.add(u);
+          stack.push(u);
+        }
+      }
+      if (!open && room.length <= 8) rooms.push(room);
+    }
+    return rooms;
   }
 
   // Territory marker: a flat, pale disc (living stones stay glossy and bigger).
