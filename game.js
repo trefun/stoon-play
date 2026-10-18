@@ -1221,7 +1221,11 @@
     if (state !== 'cpu') return;
     if (move === PASS) {
       board.play(PASS);
-      toast(t('cpuPassed'));
+      // A pass is easy to miss: stamped on the board in the CPU's ink, a sound, and a
+      // longer message.
+      stamp(t('pass'), 'cpu-pass');
+      sound.notes([523, 392], 0.12, 'triangle');
+      toast(t('cpuPassed'), 3000);
     } else {
       const before = yourAtari();
       const captured = [];
@@ -1333,9 +1337,10 @@
   }
 
   // "Game over" stamped across the board for a moment (the count reads meanwhile).
-  function stamp(text) {
+  function stamp(text, cls = '') {
     const el = $('stamp');
     el.textContent = text;
+    el.className = 'stamp' + (cls ? ' ' + cls : '');
     el.style.fontSize = '';
     el.classList.remove('show');
     // A long word (other languages, small boards) shrinks to stay on the board.

@@ -422,6 +422,8 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
   transform: translate(-50%, -50%) rotate(-6deg) scale(0.4);
 }
 .stamp.show { animation: stamp 1.5s cubic-bezier(.2, 1.4, .4, 1) both; }
+.stamp.cpu-pass { background: var(--cpu); color: var(--cpu-on); }
+.stamp.cpu-pass.show { animation-duration: 1.9s; }
 @keyframes stamp {
   0% { opacity: 0; transform: translate(-50%, -50%) rotate(-6deg) scale(1.8); }
   14% { opacity: 1; transform: translate(-50%, -50%) rotate(-6deg) scale(0.92); }
