@@ -1514,62 +1514,12 @@
         sound.splat(1.3 + (i++ % 12) * 0.05, 0.3);
         await T(step);
       }
-      await T(300);
-      // 6. The verdict, Splatoon style: the bar sloshes left and right, then slams down.
-      if (!settleFast) await meterDrama(gen);
-      await T(250);
+      await T(700);
       return true;
     })().catch(() => false);
   }
 
   let settleFast = false;
-
-  // The meter swings from side to side with a drum roll, ever wider then calming, and
-  // lands on the count with a bang.
-  function meterDrama(gen) {
-    const fills = ['meter-me', 'meter-me-komi', 'meter-cpu-komi', 'meter-cpu'].map((id) => $(id));
-    const final = fills.map((f) => parseFloat(f.style.flexGrow) || 0);
-    const total = final.reduce((a, b) => a + b, 0) || 1;
-    const meFinal = final[0] + final[1];
-    const meter = $('meter');
-    meter.classList.add('drama');
-    // The numbers hide until the bar lands.
-    const nums = [$('num-me'), $('num-cpu')];
-    const shown = nums.map((n) => n.textContent);
-    nums.forEach((n) => { n.textContent = '?'; });
-    const t0 = performance.now(), dur = 1700;
-    let beat = 0;
-    return new Promise((done) => {
-      const tick = (now) => {
-        if (gen !== gameGen) { meter.classList.remove('drama'); nums.forEach((n, i) => { n.textContent = shown[i]; }); done(); return; }
-        const k = Math.min(1, (now - t0) / dur);
-        if (k < 1) {
-          // Swing around the middle, wider then narrowing onto the real split.
-          const amp = Math.sin(Math.PI * Math.min(1, k * 1.25)) * 0.4 * total;
-          const centre = total / 2 + (meFinal - total / 2) * k * k;
-          const meNow = Math.max(0.02 * total, Math.min(0.98 * total, centre + amp * Math.sin(k * Math.PI * 9)));
-          fills[0].style.flexGrow = meNow.toFixed(2);
-          fills[1].style.flexGrow = 0;
-          fills[2].style.flexGrow = 0;
-          fills[3].style.flexGrow = (total - meNow).toFixed(2);
-          const b = Math.floor(k * 14);
-          if (b !== beat) { beat = b; sound.notes([180 + b * 12], 0.05, 'square'); }
-          requestAnimationFrame(tick);
-          return;
-        }
-        fills.forEach((f, i) => { f.style.flexGrow = final[i].toFixed(2); });
-        nums.forEach((n, i) => { n.textContent = shown[i]; });
-        meter.classList.remove('drama');
-        meter.classList.remove('slam');
-        void meter.offsetWidth;
-        meter.classList.add('slam');
-        sound.splat(0.5, 1);
-        buzz([30, 40, 60]);
-        setTimeout(done, 380);
-      };
-      requestAnimationFrame(tick);
-    });
-  }
 
   function markDead(g, p) {
     g.classList.remove('drop');
@@ -1729,12 +1679,6 @@
     splatGroup(sp, 60, 380, 90, color, seed + 3, 0.12);
     $('result-word').textContent = r.win ? 'WIN!' : 'LOSE...';
     $('result-word').className = 'result-word ' + (r.win ? 'win' : 'lose');
-    const gameEl = $('game');
-    gameEl.classList.remove('bang');
-    void gameEl.offsetWidth;
-    gameEl.classList.add('bang');
-    setTimeout(() => gameEl.classList.remove('bang'), 700);
-    setTimeout(() => { sound.splat(0.45, 1); buzz(r.win ? [40, 60, 40] : 60); }, 180);
     $('result-reason').textContent = r.reason || '';
     $('result-bars').hidden = r.me == null;
     $('tally').hidden = r.me == null;
