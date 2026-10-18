@@ -1041,9 +1041,9 @@
   const POOL_SIZE = Math.max(1, Math.min(2, (navigator.hardwareConcurrency || 2) - 1));
   let workersOk = typeof Worker === 'function' && location.protocol !== 'file:';
 
-  function think(b, iters, onProgress) {
+  function think(b, iters, onProgress, komi = KOMI) {
     return new Promise((resolve) => {
-      const job = { id: ++jobId, gen: thinkGen, n: N, board: b.clone(), komi: KOMI, iters, onProgress, resolve };
+      const job = { id: ++jobId, gen: thinkGen, n: N, board: b.clone(), komi, iters, onProgress, resolve };
       if (workersOk) { waiting.push(job); pump(); } else runHere(job);
     });
   }
@@ -1323,6 +1323,7 @@
   // Hint: a glowing ring on the move the analysis of your turn likes best.
   let hintMark = null;
   function clearHint() {
+    $('hint').classList.remove('busy');
     if (hintMark) hintMark.remove();
     hintMark = null;
   }
@@ -1330,12 +1331,24 @@
     if (state !== 'player' || !yourSearch) return;
     const moves = board.moves, gen = gameGen;
     if (auto !== true) $('hint').disabled = true; // one hint a turn
+    $('hint').classList.add('busy');
+    const done = () => $('hint').classList.remove('busy');
     const s = await yourSearch;
-    if (gen !== gameGen || state !== 'player' || board.moves !== moves) return;
+    if (gen !== gameGen || state !== 'player' || board.moves !== moves) return done();
     const d = S.decide(s, board, {});
-    if (d.type !== 'move' || d.move === PASS) { toast(t('hintPass'), 2400); return; }
+    if (d.type !== 'move' || d.move === PASS) { done(); toast(t('hintPass'), 2400); return; }
+    // Its own, deeper read, with komi moved so the game looks even from here: far ahead or
+    // far behind, every move wins (or loses) the same and the search picks almost any.
+    // Even, it plays for the points.
+    const own = s.ownership();
+    let lead = 0;
+    for (const q of POINTS) lead += own[q];
+    const h = await think(board, N === 5 ? 6000 : 10000, null, Math.round(lead) + 0.5);
+    done();
+    if (gen !== gameGen || state !== 'player' || board.moves !== moves) return;
+    const e = S.decide(h, board, {});
+    const p = e.type === 'move' && e.move !== PASS ? e.move : d.move;
     clearHint();
-    const p = d.move;
     hintMark = el('g', { class: 'hint-mark' }, fxLayer);
     el('circle', { cx: px(p), cy: py(p), r: CELL * 0.36, fill: COLORS.me, 'fill-opacity': 0.35, stroke: COLORS.meLight, 'stroke-width': 7 }, hintMark);
     sound.notes([659, 880], 0.08, 'sine');
