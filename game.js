@@ -1929,8 +1929,10 @@
 
   // Text and link only: X's composer opens with them (the link's card shows the game).
   function share() {
-    // The link opens the game at the level just played.
-    const url = location.origin + location.pathname + '?level=' + level;
+    // The link opens the game at the level just played: at its home address (the page's
+    // og:url), not wherever this copy runs (itch.io serves games from a frame of its own).
+    const home = document.querySelector('meta[property="og:url"]');
+    const url = (home ? home.content : location.origin + location.pathname) + '?level=' + level;
     openIntent(shareText(), url);
   }
 
