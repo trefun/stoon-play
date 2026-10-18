@@ -1843,13 +1843,10 @@
     const logoFont = '"Bowlby One", sans-serif';
     const headFont = cssVar('--font-head') || 'sans-serif';
     await fontsReady([`120px ${logoFont}`, `40px ${headFont}`]);
-    // Drawn at twice the size, then cut down to the final board alone (the picture for the
-    // post: just the finished game).
-    const W = 1200, H = 675, SCALE = 2;
+    const W = 1200, H = 675;
     const cv = document.createElement('canvas');
-    cv.width = W * SCALE; cv.height = H * SCALE;
+    cv.width = W; cv.height = H;
     const ctx = cv.getContext('2d');
-    ctx.scale(SCALE, SCALE);
 
     ctx.fillStyle = '#1b1236';
     ctx.fillRect(0, 0, W, H);
@@ -1915,14 +1912,6 @@
         ctx.beginPath(); ctx.moveTo(X(p) - s, Y(p) - s); ctx.lineTo(X(p) + s, Y(p) + s);
         ctx.moveTo(X(p) + s, Y(p) - s); ctx.lineTo(X(p) - s, Y(p) + s); ctx.stroke();
       }
-    }
-
-    {
-      const pad = 24, x0 = bx - pad, y0 = by - pad, size = B + 2 * pad;
-      const out = document.createElement('canvas');
-      out.width = out.height = size * SCALE;
-      out.getContext('2d').drawImage(cv, x0 * SCALE, y0 * SCALE, size * SCALE, size * SCALE, 0, 0, size * SCALE, size * SCALE);
-      return new Promise((res) => out.toBlob((bl) => res(bl), 'image/png'));
     }
 
     // Logo: "st" + two stones + "n"
@@ -2066,21 +2055,11 @@
 
   // Phones: share sheet with the image (pick X there). Elsewhere: copy the image,
   // open X's composer with the text, and let the player paste it.
+  // Text and link only: X's composer opens with them (the link's card shows the game).
   function share() {
     // The link opens the game at the level just played.
     const url = location.origin + location.pathname + '?level=' + level;
-    const text = shareText();
-    const blob = shareBlob;
-    const coarse = window.matchMedia && matchMedia('(pointer: coarse)').matches;
-    if (blob && coarse && navigator.canShare) {
-      const file = new File([blob], 'stoon.png', { type: 'image/png' });
-      const data = { files: [file], text: text + ' ' + url };
-      if (navigator.canShare(data)) {
-        navigator.share(data).catch((e) => { if (e && e.name !== 'AbortError') openIntent(text, url, blob); });
-        return;
-      }
-    }
-    openIntent(text, url, blob);
+    openIntent(shareText(), url, null);
   }
 
   function openIntent(text, url, blob) {
