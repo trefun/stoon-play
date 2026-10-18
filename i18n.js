@@ -137,7 +137,7 @@
       aliveEyes: 'Two eyes: can\'t be captured',
       seki: 'seki',
       vital: 'vital',
-      nakade: 'Room for an eye, but a stone on the vital point leaves just one',
+      nakade: 'A stone on the vital point leaves only one eye',
       koMark: 'ko',
       atariTheirs: 'Atari! Play on the dotted ring to capture',
       atariMine: 'Atari! A stone on the dotted ring captures yours',
