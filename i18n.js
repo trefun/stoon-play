@@ -104,7 +104,7 @@
       passConfirm: 'Pass?',
       passWarn: 'Still room to play. Tap again to pass',
       again: 'Rematch',
-      share: 'Share',
+      share: 'Post to X',
       toTitle: 'Menu',
       close: 'Close',
       you: 'You',
