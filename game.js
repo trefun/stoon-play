@@ -12,7 +12,7 @@
   let S, N, POINTS, idx, xOf, yOf, KOMI;
   const MOVE_LIMIT = 120;
   const LEVELS = {
-    easy: { size: 5, iters: 1500, temperature: 0.7, shy: true, resign: false, handicapKomi: 0.5 },
+    easy: { size: 5, iters: 1500, temperature: 0.7, shy: true, resign: false, handicapKomi: 0.5, offCenter: true },
     // handicapKomi: komi the CPU gets when it plays second (a little help for you).
     normal: { size: 7, iters: 2500, temperature: 0.3, floor: 0.5, resign: true, handicapKomi: 4.5 },
     strong: { size: 7, iters: 14000, temperature: 0, resign: true },
@@ -1203,17 +1203,17 @@
     const [s, o] = await Promise.all([think(board, lv.iters), board.passes > 0 ? think(flipped(board), CONFIRM_ITERS) : null]);
     const other = o && o.ownership();
     const d = S.decide(s, board, { temperature: lv.temperature, floor: lv.floor, shy: lv.shy, resign: lv.resign, other });
-    const confirmed = d.type === 'end' && (other || await confirmSettled(s.ownership()));
     await wait(CPU_MIN_MS - (performance.now() - started));
     if (gen !== thinkGen || state !== 'cpu') return;
     if (d.type === 'resign') { finish('cpu-resign'); return; }
-    if (d.type === 'end') {
-      if (confirmed) { finish('settled'); return; }
-      // Settled as the CPU sees it but not with you to move: pass and leave it to you
-      // (any other stone would only fill its own ground).
-      cpuPlay(PASS);
-      return;
+    // よわい: opening on the centre point of a 5x5 board is too strong for a beginner.
+    if (lv.offCenter && board.moves === 0 && d.type === 'move' && d.move === idx(N >> 1, N >> 1)) {
+      const other = s.ranked().find((r) => r.move !== PASS && r.move !== d.move);
+      if (other) d.move = other.move;
     }
+    // Settled as the CPU sees it: the game ends here, rather than with a pass you would
+    // have to answer.
+    if (d.type === 'end') { finish('settled'); return; }
     cpuPlay(d.move);
   }
 
@@ -1421,7 +1421,14 @@
       if (alive.length) {
         setStatus(t('aliveEyes'), '', false);
         const marks = [];
-        for (const g of alive) for (const e of g.eyes) marks.push(makeEye(centerOf(e), true));
+        // Every eye gets its mark, big pieces of ground too (each counts as an eye).
+        const marked = new Set();
+        for (const g of S.groupsOf(after)) for (const e of g.eyes) {
+          const key = e.join();
+          if (marked.has(key)) continue;
+          marked.add(key);
+          marks.push(makeEye(centerOf(e), true));
+        }
         sound.notes([523, 784], 0.12, 'triangle');
         await T(2000);
         for (const m of marks) m.classList.add('fade');

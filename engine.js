@@ -933,6 +933,16 @@
     // two, as the final count does, and the game is decided only if both agree.
     // Returns {type: 'end'} when the game is decided on the board, otherwise
     // {type: 'move', move} (PASS included) or {type: 'resign'}.
+    // Some living group (dead stones aside) is down to one liberty: a capture or a rescue
+    // is still on the board.
+    function inAtari(board, dead) {
+      const gone = new Set(dead);
+      for (const p of POINTS) {
+        if (board.c[p] !== EMPTY && !gone.has(p) && board.soleLib(p) >= 0) return true;
+      }
+      return false;
+    }
+
     function decide(search, board, opts = {}) {
       const own = search.ownership();
       if (opts.other ? settledBoth(board, own, opts.other) : isSettled(board, own)) return { type: 'end' };
@@ -954,6 +964,11 @@
         if (best.winrate > 0.8 && (me === BLACK ? margin : -margin) > 0) return { type: 'move', move: PASS };
       }
       if (opts.resign && best.winrate < 0.03 && board.moves > 14 && search.count >= 2000) return { type: 'resign' };
+      if (!open && board.moves >= POINTS.length / 2 && !inAtari(board, deadStones(board, both))) {
+        // Closed board and nothing in atari: a stone anywhere only fills ground (a point lost
+        // in the Japanese count) or delays the end, whatever the search's numbers say.
+        return { type: 'move', move: PASS, winrate: best.winrate };
+      }
       if (!open && board.moves >= POINTS.length / 2) {
         // Nothing left to fill (early on every empty area touches one color only, which
         // is why half a board of moves must come first). The search counts area, where a
