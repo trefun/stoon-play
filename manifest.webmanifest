@@ -1,7 +1,7 @@
 {
   "name": "stoon",
   "short_name": "stoon",
-  "description": "インク囲碁。CPU と陣地をぬり合う。",
+  "description": "Ink Go — paint the board, outplay the CPU. / インク囲碁。CPU と陣地をぬり合う。",
   "start_url": "./",
   "display": "standalone",
   "orientation": "portrait",

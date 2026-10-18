@@ -1138,6 +1138,7 @@
   let yourOwn = null; // the finished estimate of your current turn
   let yourSearch = null; // the analysis of your current turn (a promise), for the hint
   let history = []; // the board at the start of each of your turns, for undo
+  let helped = false; // you used undo or asked for a hint this game
 
   // pos (for checks): {rows: ['X.O..', ...], you: 'X' | 'O'} starts from that position
   // with you to move.
@@ -1175,6 +1176,7 @@
     }
     updateMeter(new Float32Array(S.SIZE));
     history = [];
+    helped = false;
     $('undo').hidden = $('hint').hidden = !LEVELS[level].help;
     toast(you === BLACK ? t('youFirst', { komi: KOMI }) : t('youSecond', { komi: KOMI }));
     sound.start();
@@ -1304,6 +1306,7 @@
     stopThinking();
     disarm();
     clearHint();
+    helped = true;
     history.pop();
     const snap = history.pop();
     board = snap.board.clone();
@@ -1330,7 +1333,7 @@
   async function showHint(auto) {
     if (state !== 'player' || !yourSearch) return;
     const moves = board.moves, gen = gameGen;
-    if (auto !== true) $('hint').disabled = true; // one hint a turn
+    if (auto !== true) { $('hint').disabled = true; helped = true; } // one hint a turn
     $('hint').classList.add('busy');
     const done = () => $('hint').classList.remove('busy');
     const s = await yourSearch;
@@ -1832,8 +1835,13 @@
       $('res-cpu-note').textContent = breakdown(r.cpuTerr, r.cpuAge, r.cpuKomi);
     }
     // A first win at this level, or a run of wins, gets a word under the result.
-    const rec = addRecord(r.win);
-    const cheer = !r.win ? '' : rec.w === 1 ? t('firstWin') : rec.s >= 2 ? t('streak', { n: rec.s }) : '';
+    // A win on a level with undo and hints, without either, gets a medal.
+    r.clean = r.win && !!LEVELS[level].help && !helped;
+    const rec = addRecord(r.win, r.clean);
+    const cheer = [
+      r.clean ? t('noHelp') : '',
+      !r.win ? '' : rec.w === 1 ? t('firstWin') : rec.s >= 2 ? t('streak', { n: rec.s }) : '',
+    ].filter(Boolean).join(' · ');
     $('result-reason').textContent = [r.reason, cheer].filter(Boolean).join(' · ');
     // The winner's stones hop in a wave, the loser's look worried.
     const winner = r.win ? you : 3 - you;
@@ -1883,7 +1891,7 @@
     if (r.me != null) key = r.win ? 'shareWin' : 'shareLose';
     else key = r.win ? 'shareWinResign' : 'shareLoseResign';
     const rec = loadRecord()[level];
-    const streak = r.win && rec && rec.s >= 2 ? ' ' + t('streak', { n: rec.s }) : '';
+    const streak = (r.clean ? ' ' + t('noHelp') : '') + (r.win && rec && rec.s >= 2 ? ' ' + t('streak', { n: rec.s }) : '');
     const map = shareMap(r);
     return t(key, vars) + streak + (map ? '\n' + map : '') + '\n#stoon';
   }
@@ -1958,10 +1966,11 @@
     try { return JSON.parse(store.get('record', '{}')) || {}; } catch (e) { return {}; }
   }
   // Returns the level's record after this game: {w, l, s (wins in a row)}.
-  function addRecord(win) {
+  function addRecord(win, clean) {
     const rec = loadRecord();
     const r = rec[level] || { w: 0, l: 0, s: 0 };
     if (win) { r.w++; r.s = (r.s || 0) + 1; } else { r.l++; r.s = 0; }
+    if (clean) r.c = (r.c || 0) + 1;
     rec[level] = r;
     store.set('record', JSON.stringify(rec));
     return r;
@@ -2235,7 +2244,7 @@
       ? t('levelNoteHandicap', { n, komi: BOARDS[n].komi, hc })
       : t('levelNote', { n, komi: BOARDS[n].komi });
     const rec = loadRecord()[level];
-    $('level-record').textContent = !rec ? '' : t('record', rec) + (rec.s >= 2 ? ' · ' + t('streakNow', { n: rec.s }) : '');
+    $('level-record').textContent = !rec ? '' : t('record', rec) + (rec.c ? ' · ' + t('noHelpCount', { n: rec.c }) : '') + (rec.s >= 2 ? ' · ' + t('streakNow', { n: rec.s }) : '');
   }
   levelBtns.forEach((b) => b.addEventListener('click', () => {
     level = b.dataset.level;

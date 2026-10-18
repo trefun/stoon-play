@@ -82,6 +82,8 @@
       firstWin: 'このレベルではじめての勝ち！',
       streak: '{n} 連勝！',
       streakNow: '{n} 連勝中',
+      noHelp: '🏅ヒント・まったなし',
+      noHelpCount: '🏅ヒントなし {n}勝',
     },
     en: {
       tagline: 'ink Go',
@@ -162,6 +164,8 @@
       firstWin: 'Your first win at this level!',
       streak: '{n} wins in a row!',
       streakNow: '{n} in a row',
+      noHelp: '🏅No hints, no undo',
+      noHelpCount: '🏅{n} with no help',
     },
     'zh-Hans': {
       tagline: '墨水围棋',
@@ -242,6 +246,8 @@
       firstWin: '在这个难度第一次获胜！',
       streak: '{n} 连胜！',
       streakNow: '{n} 连胜中',
+      noHelp: '🏅无提示、无悔棋',
+      noHelpCount: '🏅无提示 {n}胜',
     },
     'zh-Hant': {
       tagline: '墨水圍棋',
@@ -322,6 +328,8 @@
       firstWin: '在這個難度第一次獲勝！',
       streak: '{n} 連勝！',
       streakNow: '{n} 連勝中',
+      noHelp: '🏅無提示、無悔棋',
+      noHelpCount: '🏅無提示 {n}勝',
     },
     ko: {
       tagline: '잉크 바둑',
@@ -402,6 +410,8 @@
       firstWin: '이 난이도에서 첫 승리!',
       streak: '{n}연승!',
       streakNow: '{n}연승 중',
+      noHelp: '🏅힌트·무르기 없이',
+      noHelpCount: '🏅힌트 없이 {n}승',
     },
   };
 
