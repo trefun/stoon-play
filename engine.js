@@ -343,6 +343,7 @@
         this.children = null;
         this.n = 0; this.w = 0;
         this.an = 0; this.aw = 0;
+        this.s = 0; // summed final area margin, for the color that played move
       }
     }
 
@@ -427,7 +428,8 @@
           if (p !== PASS && !amaf[p]) amaf[p] = color;
         }
         const own = this.own, ownSum = this.ownSum;
-        const rb = b.areaScore(own) - this.komi > 0 ? 1 : 0; // reward for black
+        const margin = b.areaScore(own) - this.komi; // black's
+        const rb = margin > 0 ? 1 : 0; // reward for black
         const rw = 1 - rb;
         for (let i = 0; i < POINTS.length; i++) ownSum[POINTS[i]] += own[POINTS[i]];
         this.count++;
@@ -435,6 +437,7 @@
           const nd = path[i];
           nd.n++;
           nd.w += nd.color === BLACK ? rb : rw;
+          nd.s += nd.color === BLACK ? margin : -margin;
           const kids = nd.children;
           if (!kids) continue;
           for (let j = 0; j < kids.length; j++) {
@@ -459,12 +462,13 @@
         return out;
       }
 
-      // Children sorted by visits: [{move, n, winrate}] from the mover's point of view.
+      // Children sorted by visits: [{move, n, winrate, score (mean area margin)}] from the
+      // mover's point of view.
       ranked() {
         if (!this.root.children) return [];
         return this.root.children
           .filter((c) => c.n > 0)
-          .map((c) => ({ move: c.move, n: c.n, winrate: c.w / c.n }))
+          .map((c) => ({ move: c.move, n: c.n, winrate: c.w / c.n, score: c.s / c.n }))
           .sort((a, b) => b.n - a.n);
       }
 
@@ -1016,6 +1020,24 @@
         const pass = ranked.find((r) => r.move === PASS);
         if (pass && pass.n >= 30 && pass.winrate >= best.winrate - 0.04) return { type: 'move', move: PASS, winrate: best.winrate };
       }
+      // Decided either way: every move wins (or loses) alike, so the win rate no longer
+      // tells moves apart and the search would play almost anywhere, stones in settled
+      // ground included. Go by the expected score instead, a stone in ground already
+      // settled counting a point less (in the Japanese count it fills a point of your own
+      // or hands over a prisoner). A weaker level that is losing keeps its sampling, only
+      // without those stones.
+      const decided = best.winrate >= 0.9 || best.winrate <= 0.1;
+      const settledPoint = (m) => m !== PASS && Math.abs(both[m]) > 0.7;
+      if (decided && !(opts.temperature && best.winrate <= 0.1)) {
+        const floorN = Math.max(30, best.n * 0.08);
+        let top = null, topV = -Infinity;
+        for (const r of ranked) {
+          if (r.n < floorN || r.score == null || (r.move === PASS && open)) continue;
+          const v = r.score - (settledPoint(r.move) ? 1 : 0);
+          if (v > topV) { topV = v; top = r; }
+        }
+        if (top) return { type: 'move', move: top.move, winrate: best.winrate };
+      }
       let pick = best;
       if (best.move === PASS && open) {
         // Don't hand the game over while there is shared ground left.
@@ -1026,7 +1048,7 @@
         // Weaker play: sample among non-pass moves by visits.
         // Only moves the search found nearly as good (floor: share of the best one's visits).
         const floor = best.n * (opts.floor != null ? opts.floor : opts.shy ? 0.2 : 0);
-        const pool = ranked.filter((r) => r.move !== PASS && r.n >= floor);
+        const pool = ranked.filter((r) => r.move !== PASS && r.n >= floor && !(decided && settledPoint(r.move)));
         if (pool.length && pick.move !== PASS) {
           const w = pool.map((r) => Math.pow(r.n, 1 / opts.temperature) * (opts.shy ? shyWeight(board, own, r.move) : 1));
           let t = rand() * w.reduce((a, b) => a + b, 0);
