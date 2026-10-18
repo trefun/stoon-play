@@ -29,15 +29,16 @@
       close: 'とじる',
       you: 'あなた',
       cpu: 'CPU',
-      howtoItems: [
-        '先手と後手は毎回ランダム。交互に石を置く',
-        '石のまわりはインクでぬられる。インクの広さが今の形勢',
-        'まわりをすべて囲まれた石は取られる。相手の石を取れないのに、置いたとたん囲まれる所には打てない',
-        '1 つずつ取り合う形（コウ）は、取られた直後には取り返せない。ほかに 1 手打ってから',
-        '自分の石で囲んだ空き点が「目」。目が 2 つある石は取られない',
-        '打っても変わらない所しか残らないか、パスが 2 回続くと終局。逃げられない石（死に石）は取って数える',
-        '「地（囲んだ空き点）＋アゲハマ（取った石）」が多いほうの勝ち。後手にはコミを足す',
+      howtoSteps: [
+        'かわりばんこに石を置く',
+        'インクが広いほど有利',
+        'まわりを囲むと取れる',
+        '囲まれる所には置けない',
+        'コウ：すぐには取り返せない',
+        '目が 2 つあれば取られない',
+        '地＋アゲハマが多いほうの勝ち（後手にはコミ）',
       ],
+      prev: '前へ', next: '次へ',
       komi: 'コミ',
       territory: '地',
       prisoners: 'アゲハマ',
@@ -100,15 +101,16 @@
       close: 'Close',
       you: 'You',
       cpu: 'CPU',
-      howtoItems: [
-        'Who goes first is random. Take turns placing stones',
-        'Stones spread ink. The ink shows who\'s ahead',
-        'Surrounded stones are captured. You can\'t play where your stone would be instantly surrounded, unless it captures',
-        'Ko: in a one-stone back-and-forth, you can\'t retake right away. Play elsewhere first',
-        'Empty points you surround are eyes. Groups with two eyes can\'t be captured',
-        'The game ends when no useful moves are left or both pass in a row. Dead stones (they can\'t escape) count as captures',
-        'Territory (empty points you surround) + captures: higher total wins. The second player adds komi',
+      howtoSteps: [
+        'Take turns placing stones',
+        'More ink means you are ahead',
+        'Surround stones to capture them',
+        "You can't play where you'd be surrounded",
+        'Ko: no instant retake',
+        "Two eyes: can't be captured",
+        'Most territory + captures wins (komi for the 2nd player)',
       ],
+      prev: 'Previous', next: 'Next',
       komi: 'Komi',
       territory: 'Territory',
       prisoners: 'Captures',
@@ -171,15 +173,16 @@
       close: '关闭',
       you: '你',
       cpu: '电脑',
-      howtoItems: [
-        '先后手每局随机。双方轮流落子',
-        '棋子周围会被墨水涂满，墨水的范围就是当前形势',
-        '四周被完全包围的棋子会被提走。不能下在一放下就被包围的地方（能提子时除外）',
-        '打劫：一子被提后不能马上提回，要先在别处下一手',
-        '自己的棋子围住的空点叫“眼”。有两只眼的棋子不会被提',
-        '没有值得下的地方或连续两次停一手时终局。逃不掉的棋子（死子）会被提走再数',
-        '“地（围住的空点）＋提子”多的一方获胜。后手加贴目',
+      howtoSteps: [
+        '轮流落子',
+        '墨水越多越有利',
+        '围住就能提子',
+        '不能下在会被围住的地方',
+        '劫：不能马上提回',
+        '有两只眼就不会被提',
+        '地＋提子多的一方获胜（后手加贴目）',
       ],
+      prev: '上一步', next: '下一步',
       komi: '贴目',
       territory: '地',
       prisoners: '提子',
@@ -242,15 +245,16 @@
       close: '關閉',
       you: '你',
       cpu: '電腦',
-      howtoItems: [
-        '先後手每局隨機。雙方輪流落子',
-        '棋子周圍會被墨水塗滿，墨水的範圍就是目前形勢',
-        '四周被完全包圍的棋子會被提走。不能下在一放下就被包圍的地方（能提子時除外）',
-        '打劫：一子被提後不能馬上提回，要先在別處下一手',
-        '自己的棋子圍住的空點叫「眼」。有兩隻眼的棋子不會被提',
-        '沒有值得下的地方或連續兩次虛手時終局。逃不掉的棋子（死子）會被提走再數',
-        '「地（圍住的空點）＋提子」多的一方獲勝。後手加貼目',
+      howtoSteps: [
+        '輪流落子',
+        '墨水越多越有利',
+        '圍住就能提子',
+        '不能下在會被圍住的地方',
+        '劫：不能馬上提回',
+        '有兩隻眼就不會被提',
+        '地＋提子多的一方獲勝（後手加貼目）',
       ],
+      prev: '上一步', next: '下一步',
       komi: '貼目',
       territory: '地',
       prisoners: '提子',
@@ -313,15 +317,16 @@
       close: '닫기',
       you: '나',
       cpu: 'CPU',
-      howtoItems: [
-        '누가 먼저 둘지는 매번 무작위예요. 번갈아 돌을 놓아요',
-        '돌 주변이 잉크로 칠해져요. 잉크의 넓이가 지금의 형세예요',
-        '사방이 모두 둘러싸인 돌은 잡혀요. 상대 돌을 잡지 못하는데 놓자마자 둘러싸이는 곳에는 둘 수 없어요',
-        '패: 한 점을 서로 따내는 모양에서는 따인 직후에 바로 되따낼 수 없어요. 다른 곳에 한 수 둔 뒤에 따내요',
-        '내 돌로 둘러싼 빈 점이 ‘눈’이에요. 눈이 두 개인 돌은 잡히지 않아요',
-        '더 둘 의미가 있는 곳이 없거나 패스가 두 번 이어지면 종국이에요. 살 수 없는 돌(죽은 돌)은 들어내고 세요',
-        '‘집(둘러싼 빈 점) + 사석(잡은 돌)’이 많은 쪽이 이겨요. 나중에 두는 쪽은 덤을 더해요',
+      howtoSteps: [
+        '번갈아 돌을 놓아요',
+        '잉크가 넓을수록 유리해요',
+        '둘러싸면 잡을 수 있어요',
+        '둘러싸이는 곳엔 못 놓아요',
+        '패: 바로 되따낼 수 없어요',
+        '눈이 두 개면 잡히지 않아요',
+        '집 + 사석이 많은 쪽이 이겨요 (나중에 두면 덤)',
       ],
+      prev: '이전', next: '다음',
       komi: '덤',
       territory: '집',
       prisoners: '사석',
@@ -397,9 +402,11 @@
     const list = doc.getElementById('howto-list');
     if (list) {
       list.textContent = '';
-      t('howtoItems').forEach((text) => {
+      t('howtoSteps').forEach((text) => {
         const li = doc.createElement('li');
-        li.appendChild(doc.createTextNode(text));
+        const p = doc.createElement('p');
+        p.textContent = text;
+        li.appendChild(p);
         list.appendChild(li);
       });
     }

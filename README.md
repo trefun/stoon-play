@@ -1,11 +1,11 @@
 # stoon
 
-インク囲碁。石を置くとまわりがインクでぬられる、一人用の CPU 対戦の囲碁です。
+Ink Go. A single-player Go game against the CPU — every stone you place splashes ink around it.
 
-**遊ぶ：** https://trefun.github.io/stoon-play/
+**Play:** https://trefun.github.io/stoon-play/
 
-- 強さは 3 つ：よわい（5路）・ふつう（7路）・つよい（7路）
-- 数え方は日本ルール（地＋アゲハマ＋コミ）
-- 日本語・English・简体中文・繁體中文・한국어
+- Three levels: Easy (5×5), Normal (7×7), Hard (7×7)
+- Japanese scoring (territory + captures + komi)
+- 日本語 · English · 简体中文 · 繁體中文 · 한국어
 
-ブラウザだけで動きます（インストール不要）。
+Runs in the browser — nothing to install.

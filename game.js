@@ -1948,73 +1948,113 @@
     return s;
   }
 
+  // How to play: one small looping animation per step (SVG with SMIL timing, in the page's
+  // ink colours), with a short line under it. The steps sit side by side and swipe.
   function howtoArt() {
     const NAVY = '#120b28';
-    const f = (v) => +v.toFixed(1);
-    const stone = stoneSvg;
-    // A patch of board: cols x rows points, cell c, origin at the first point.
-    const floor = (x, y, cols, rows, c) => {
-      let s = `<rect x="${x - c * 0.6}" y="${y - c * 0.6}" width="${(cols - 1 + 1.2) * c}" height="${(rows - 1 + 1.2) * c}" rx="${c * 0.4}" fill="#e9e5f0"/>`;
-      s += `<g stroke="#2a1f4d" stroke-opacity="0.38" stroke-width="1.2" stroke-linecap="round">`;
-      for (let i = 0; i < rows; i++) s += `<line x1="${x}" y1="${y + i * c}" x2="${x + (cols - 1) * c}" y2="${y + i * c}"/>`;
-      for (let i = 0; i < cols; i++) s += `<line x1="${x + i * c}" y1="${y}" x2="${x + i * c}" y2="${y + (rows - 1) * c}"/>`;
-      return s + '</g>';
+    const C = 20, X0 = 20, Y0 = 15; // a 5 x 4 patch of board
+    const P = (x, y) => [X0 + x * C, Y0 + y * C];
+    const stone = (x, y, side, face) => { const [a, b] = P(x, y); return stoneSvg(a, b, 8.6, side, face); };
+    const floor = (cols = 5, rows = 4) => {
+      let f = `<rect x="${X0 - C * 0.6}" y="${Y0 - C * 0.6}" width="${(cols - 1 + 1.2) * C}" height="${(rows - 1 + 1.2) * C}" rx="8" fill="#e9e5f0"/>`;
+      f += '<g stroke="#2a1f4d" stroke-opacity="0.38" stroke-width="1.2" stroke-linecap="round">';
+      for (let i = 0; i < rows; i++) f += `<line x1="${X0}" y1="${Y0 + i * C}" x2="${X0 + (cols - 1) * C}" y2="${Y0 + i * C}"/>`;
+      for (let i = 0; i < cols; i++) f += `<line x1="${X0 + i * C}" y1="${Y0}" x2="${X0 + i * C}" y2="${Y0 + (rows - 1) * C}"/>`;
+      return f + '</g>';
     };
-    const eye = (x, y, w) => `<path d="M${x - w},${y}Q${x},${y - w * 1.25} ${x + w},${y}Q${x},${y + w * 1.25} ${x - w},${y}Z" fill="#fff" stroke="${NAVY}" stroke-width="1.6"/><circle cx="${x}" cy="${y}" r="${f(w * 0.5)}" fill="${NAVY}"/>`;
-    const svg = (body) => `<svg class="howto-art" viewBox="0 0 72 54" aria-hidden="true">${body}</svg>`;
-    const turns = svg(stone(20, 27, 12, 'me') + stone(52, 27, 12, 'cpu')
-      + `<path d="M24,11Q36,2 48,11M48,43Q36,52 24,43" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/>`
-      + `<path d="M44,6L48.5,11.5L42,13M28,48L23.5,42.5L30,41" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>`);
-    let blobs = '';
-    for (const [x, y, r] of [[36, 27, 17], [22, 18, 8], [51, 36, 9], [24, 39, 7], [50, 15, 6], [14, 30, 4]]) blobs += `<circle cx="${x}" cy="${y}" r="${r}" style="fill:var(--me)" opacity="0.55"/>`;
-    const ink = svg(floor(12, 9, 4, 3, 16) + blobs + stone(36, 27, 11, 'me'));
-    const capture = svg(floor(18, 9, 3, 3, 18) + stone(36, 27, 8, 'grey', 'dead')
-      + stone(36, 9, 8, 'me') + stone(18, 27, 8, 'me') + stone(54, 27, 8, 'me') + stone(36, 45, 8, 'me'));
-    let koArt = floor(15, 9, 4, 3, 14);
-    for (const [x, y] of [[1, 0], [0, 1], [2, 1], [1, 2]]) koArt += stone(15 + x * 14, 9 + y * 14, 6.2, 'me');
-    for (const [x, y] of [[2, 0], [3, 1], [2, 2]]) koArt += stone(15 + x * 14, 9 + y * 14, 6.2, 'cpu');
-    koArt += `<circle cx="29" cy="23" r="5.6" fill="none" stroke="#fff" stroke-width="1.6" stroke-dasharray="2.6 2"/><path d="M26,20L32,26M32,20L26,26" stroke="#ff3b5c" stroke-width="2" stroke-linecap="round"/>`;
-    const ko = svg(koArt);
-    let ring = floor(8, 9, 5, 3, 14);
-    for (let i = 0; i < 5; i++) ring += stone(8 + i * 14, 9, 6.4, 'me', 'beam') + stone(8 + i * 14, 37, 6.4, 'me', 'beam');
-    ring += stone(8, 23, 6.4, 'me', 'beam') + stone(36, 23, 6.4, 'me', 'beam') + stone(64, 23, 6.4, 'me', 'beam');
-    ring += eye(22, 23, 5) + eye(50, 23, 5);
-    const eyes = svg(ring);
-    let end = floor(12, 9, 4, 3, 16);
-    end += `<rect x="2" y="0" width="34" height="54" style="fill:var(--me)" opacity="0.5"/>`;
-    end += stone(28, 27, 7.5, 'grey', 'dead');
-    for (const [x, y] of [[12, 27], [28, 9], [28, 45], [44, 27]]) end += `<circle cx="${x}" cy="${y}" r="7" style="fill:var(--me-light)" fill-opacity="0.8" stroke="${NAVY}" stroke-width="1.4" stroke-dasharray="3 2.4"/>`;
-    end += stone(60, 9, 7.5, 'cpu') + stone(60, 45, 7.5, 'cpu');
-    const endArt = svg(`<clipPath id="howto-end"><rect x="2" y="0" width="70" height="54" rx="7"/></clipPath><g clip-path="url(#howto-end)">${end}</g>`);
-    const bar = (x, w, cls) => `<rect x="${x}" y="21" width="${w}" height="12" class="${cls}"/>`;
-    const score = svg(`<defs><pattern id="howto-dots" width="5" height="5" patternUnits="userSpaceOnUse"><rect width="5" height="5" style="fill:var(--me)"/><circle cx="2.5" cy="2.5" r="1.2" fill="#fff" opacity="0.65"/></pattern>`
-      + `<pattern id="howto-stripes" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="5" height="5" style="fill:var(--cpu)"/><rect width="2" height="5" style="fill:var(--cpu-light)"/></pattern>`
-      + `<clipPath id="howto-bar"><rect x="4" y="21" width="64" height="12" rx="6"/></clipPath></defs>`
-      + `<rect x="2" y="19" width="68" height="16" rx="8" fill="${NAVY}"/><g clip-path="url(#howto-bar)">`
-      + bar(4, 26, 'ha-me') + bar(30, 10, 'ha-dots') + bar(40, 8, 'ha-stripes') + bar(48, 20, 'ha-cpu') + '</g>'
-      + `<rect x="34.5" y="16" width="3" height="22" fill="#fff" stroke="${NAVY}" stroke-width="1"/>`
-      + stone(14, 8, 5.5, 'me') + stone(58, 8, 5.5, 'cpu'));
-    return [turns, ink, capture, ko, eyes, endArt, score];
+    const CYC = 4; // seconds per loop
+    let n = 0;
+    // Each picture loops on its own clock; parts show up (and go) at set times in the loop.
+    const art = (body) => {
+      const id = 'ht' + ++n;
+      return { id, svg: `<svg class="howto-anim" viewBox="0 0 120 90" aria-hidden="true"><rect width="0" height="0"><animate id="${id}" attributeName="x" from="0" to="0" dur="${CYC}s" begin="0s;${id}.end"/></rect>${body(id)}</svg>` };
+    };
+    const at = (id, from, to, body, drop = true) =>
+      `<g opacity="0"><set attributeName="opacity" to="0" begin="${id}.begin"/><set attributeName="opacity" to="1" begin="${id}.begin+${from}s"/>`
+      + (to ? `<set attributeName="opacity" to="0" begin="${id}.begin+${to}s"/>` : '')
+      + (drop ? `<animateTransform attributeName="transform" type="translate" values="0,-6;0,0" dur="0.2s" begin="${id}.begin+${from}s"/>` : '')
+      + `${body}</g>`;
+    const gone = (id, when, body) =>
+      `<g><set attributeName="opacity" to="1" begin="${id}.begin"/><set attributeName="opacity" to="0" begin="${id}.begin+${when}s"/>${body}</g>`;
+    const cross = (x, y) => { const [a, b] = P(x, y); return `<path d="M${a - 6},${b - 6}L${a + 6},${b + 6}M${a + 6},${b - 6}L${a - 6},${b + 6}" stroke="#ff3b5c" stroke-width="3.4" stroke-linecap="round"/>`; };
+    const ghost = (x, y, side) => `<g opacity="0.55">${stone(x, y, side)}</g>`;
+    const eye = (x, y) => { const [a, b] = P(x, y), w = 6; return `<path d="M${a - w},${b}Q${a},${b - w * 1.25} ${a + w},${b}Q${a},${b + w * 1.25} ${a - w},${b}Z" fill="#fff" stroke="${NAVY}" stroke-width="1.6"/><circle cx="${a}" cy="${b}" r="3" fill="${NAVY}"/>`; };
+    const grow = (id, x, y, r, side, from) => { const [a, b] = P(x, y); return `<circle cx="${a}" cy="${b}" r="0" style="fill:var(--${side})" opacity="0.5"><set attributeName="r" to="0" begin="${id}.begin"/><animate attributeName="r" values="0;${r}" dur="0.7s" begin="${id}.begin+${from}s" fill="freeze"/></circle>`; };
+
+    return [
+      // 1. Take turns.
+      art((id) => floor() + at(id, 0.3, 0, stone(1, 1, 'me')) + at(id, 0.9, 0, stone(3, 1, 'cpu')) + at(id, 1.5, 0, stone(2, 2, 'me'))
+        + at(id, 2.1, 0, stone(3, 2, 'cpu')) + at(id, 2.7, 0, stone(1, 2, 'me'))),
+      // 2. Ink spreads around the stones: the wider, the better.
+      art((id) => floor() + grow(id, 1, 1, 30, 'me', 0.6) + grow(id, 3, 2, 22, 'cpu', 1.4) + at(id, 0.2, 0, stone(1, 1, 'me')) + at(id, 1.0, 0, stone(3, 2, 'cpu'))),
+      // 3. Surround a stone to take it.
+      art((id) => floor() + gone(id, 2.5, stone(2, 1, 'cpu')) + at(id, 0.4, 0, stone(2, 0, 'me')) + at(id, 0.9, 0, stone(1, 1, 'me'))
+        + at(id, 1.4, 0, stone(3, 1, 'me')) + at(id, 1.9, 0, stone(2, 2, 'me'))),
+      // 4. No playing where you would be surrounded at once.
+      art((id) => floor() + stone(2, 0, 'me') + stone(1, 1, 'me') + stone(3, 1, 'me') + stone(2, 2, 'me')
+        + at(id, 0.6, 2.4, ghost(2, 1, 'cpu')) + at(id, 1.1, 2.4, cross(2, 1), false)),
+      // 5. Ko: a stone just taken back can't be retaken at once.
+      art((id) => floor(4, 3) + stone(1, 0, 'me') + stone(0, 1, 'me') + stone(1, 2, 'me') + stone(2, 0, 'cpu') + stone(3, 1, 'cpu') + stone(2, 2, 'cpu')
+        + gone(id, 0.8, stone(1, 1, 'cpu')) + at(id, 0.5, 0, stone(2, 1, 'me')) + at(id, 1.5, 2.8, ghost(1, 1, 'cpu')) + at(id, 1.9, 2.8, cross(1, 1), false)),
+      // 6. Two eyes: can't be taken.
+      art((id) => {
+        let g = floor(5, 3);
+        for (let i = 0; i < 5; i++) g += stone(i, 0, 'me', 'beam') + stone(i, 2, 'me', 'beam');
+        g += stone(0, 1, 'me', 'beam') + stone(2, 1, 'me', 'beam') + stone(4, 1, 'me', 'beam') + eye(1, 1) + eye(3, 1);
+        return g + at(id, 1.0, 2.8, ghost(1, 1, 'cpu')) + at(id, 1.4, 2.8, cross(1, 1), false);
+      }),
+      // 7. At the end, territory + prisoners decide (the second player adds komi).
+      art((id) => {
+        let g = floor();
+        g += at(id, 0.3, 0, `<rect x="8" y="3" width="52" height="84" style="fill:var(--me)" opacity="0.5"/>`, false);
+        g += at(id, 0.8, 0, `<rect x="60" y="3" width="52" height="84" style="fill:var(--cpu)" opacity="0.5"/>`, false);
+        for (let y = 0; y < 4; y++) g += stone(2, y, y % 2 ? 'cpu' : 'me');
+        g += at(id, 1.5, 0, `<g><rect x="16" y="36" width="88" height="18" rx="9" fill="${NAVY}"/><rect x="19" y="39" width="46" height="12" rx="6" style="fill:var(--me)"/><rect x="65" y="39" width="36" height="12" rx="6" style="fill:var(--cpu)"/><rect x="58.5" y="33" width="3" height="24" fill="#fff" stroke="${NAVY}" stroke-width="1"/></g>`);
+        return g;
+      }),
+    ].map((a) => a.svg);
   }
   {
-    const items = $('howto-list').children;
+    const list = $('howto-list');
+    const items = list.children;
     howtoArt().forEach((art, i) => { if (items[i]) items[i].insertAdjacentHTML('afterbegin', art); });
+    // Dots and arrows for the steps.
+    const dots = $('howto-dots');
+    [...items].forEach((_, i) => {
+      const d = document.createElement('button');
+      d.type = 'button';
+      d.setAttribute('aria-label', String(i + 1));
+      d.addEventListener('click', () => howtoGo(i));
+      dots.appendChild(d);
+    });
   }
+  function howtoIndex() {
+    const list = $('howto-list');
+    return Math.round(list.scrollLeft / Math.max(1, list.clientWidth));
+  }
+  function howtoGo(i) {
+    const list = $('howto-list');
+    const last = list.children.length - 1;
+    i = Math.max(0, Math.min(last, i));
+    list.scrollTo({ left: i * list.clientWidth, behavior: 'smooth' });
+    howtoSync(i);
+  }
+  function howtoSync(i = howtoIndex()) {
+    const last = $('howto-list').children.length - 1;
+    [...$('howto-dots').children].forEach((d, k) => d.classList.toggle('on', k === i));
+    $('howto-prev').disabled = i <= 0;
+    $('howto-next').disabled = i >= last;
+  }
+  $('howto-list').addEventListener('scroll', () => howtoSync(), { passive: true });
+  $('howto-prev').addEventListener('click', () => howtoGo(howtoIndex() - 1));
+  $('howto-next').addEventListener('click', () => howtoGo(howtoIndex() + 1));
 
   // Until the first look at the rules (and the first game), the button wiggles a little.
   if (store.get('howtoSeen', '0') !== '1' && !Object.keys(loadRecord()).length) $('howto-open').classList.add('nudge');
-  // When the list doesn't fit (small frames), its bottom fades out until it is scrolled down.
-  const howtoList = $('howto-list');
-  function howtoFade() {
-    const more = howtoList.scrollHeight - howtoList.clientHeight - howtoList.scrollTop > 4;
-    howtoList.classList.toggle('more', more);
-  }
-  howtoList.addEventListener('scroll', howtoFade, { passive: true });
-  addEventListener('resize', () => { if (!$('howto').hidden) howtoFade(); });
   $('howto-open').addEventListener('click', () => {
     $('howto').hidden = false;
-    howtoList.scrollTop = 0;
-    howtoFade();
+    $('howto-list').scrollLeft = 0;
+    howtoSync(0);
     $('howto-open').classList.remove('nudge');
     store.set('howtoSeen', '1');
   });
