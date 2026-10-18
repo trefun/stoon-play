@@ -1221,11 +1221,9 @@
     if (state !== 'cpu') return;
     if (move === PASS) {
       board.play(PASS);
-      // A pass is easy to miss: stamped on the board in the CPU's ink, a sound, and a
-      // longer message.
-      stamp(t('pass'), 'cpu-pass');
+      // A pass is easy to miss: a short note in the middle of the board, in the CPU's ink.
+      stamp(t('cpuPassed'), 'cpu-pass');
       sound.notes([523, 392], 0.12, 'triangle');
-      toast(t('cpuPassed'), 3000);
     } else {
       const before = yourAtari();
       const captured = [];
